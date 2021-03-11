@@ -6,7 +6,7 @@ log = logging.getLogger("Thug")
 
 
 # Introduced in DOM Level 2
-class DocumentView(object):
+class DocumentView:
     def __init__(self, doc):
         self.doc = doc
 

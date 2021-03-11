@@ -3,7 +3,7 @@
 from .CSSStyleDeclaration import CSSStyleDeclaration
 
 
-class ElementCSSInlineStyle(object):
+class ElementCSSInlineStyle:
     def __init__(self, doc, tag):
         self.doc = doc
         self.tag = tag

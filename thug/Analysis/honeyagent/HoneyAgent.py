@@ -21,13 +21,13 @@ import os
 import base64
 import tempfile
 import logging
-import requests
 import six.moves.configparser as ConfigParser
+import requests
 
 log = logging.getLogger("Thug")
 
 
-class HoneyAgent(object):
+class HoneyAgent:
     def __init__(self):
         self.enabled = True
         self.opts    = dict()
@@ -50,11 +50,13 @@ class HoneyAgent(object):
 
         self.opts['scanurl'] = config.get('honeyagent', 'scanurl') # pragma: no cover
 
-    def save_report(self, response, basedir, sample):
+    @staticmethod
+    def save_report(response, basedir, sample):
         log_dir  = os.path.join(basedir, 'analysis', 'honeyagent')
         log.ThugLogging.log_honeyagent(log_dir, sample, response.text)
 
-    def save_dropped(self, response, basedir, sample):
+    @staticmethod
+    def save_dropped(response, basedir, sample):
         data = response.json()
 
         result = data.get("result", None)
@@ -76,7 +78,8 @@ class HoneyAgent(object):
 
         return result
 
-    def dump_yara_analysis(self, result, sample):
+    @staticmethod
+    def dump_yara_analysis(result, sample):
         yara = result.get("yara", None)
         if yara is None: # pragma: no cover
             return

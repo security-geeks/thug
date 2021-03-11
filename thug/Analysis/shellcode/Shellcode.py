@@ -35,7 +35,7 @@ except ImportError: # pragma: no cover
 log = logging.getLogger("Thug")
 
 
-class Shellcode(object):
+class Shellcode:
     modules = ('pylibemu', 'speakeasy', )
 
     def __init__(self):
@@ -122,7 +122,8 @@ class Shellcode(object):
             self.retrieve_WinExec(url)
             profile = profile[1:]
 
-    def build_shellcode(self, s):
+    @staticmethod
+    def build_shellcode(s):
         i  = 0
         sc = list()
 

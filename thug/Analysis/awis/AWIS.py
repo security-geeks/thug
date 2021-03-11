@@ -16,7 +16,7 @@ except ImportError:
 log = logging.getLogger("Thug")
 
 
-class AWIS(object):
+class AWIS:
     def __init__(self):
         self.enabled = MYAWIS_MODULE
         self.__init_awis()

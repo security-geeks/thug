@@ -21,13 +21,13 @@ import os
 import json
 import tempfile
 import logging
-import requests
 import six.moves.configparser as ConfigParser
+import requests
 
 log = logging.getLogger("Thug")
 
 
-class VirusTotal(object):
+class VirusTotal:
     def __init__(self):
         self.enabled = True
         self.opts    = dict()
@@ -54,7 +54,8 @@ class VirusTotal(object):
         if not self.opts.get('apikey', None): # pragma: no cover
             self.enabled = False
 
-    def save_report(self, response_dict, basedir, sample):
+    @staticmethod
+    def save_report(response_dict, basedir, sample):
         log_dir = os.path.join(basedir, 'analysis', 'virustotal')
         content = json.dumps(response_dict)
 

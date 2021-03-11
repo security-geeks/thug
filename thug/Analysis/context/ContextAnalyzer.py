@@ -23,7 +23,7 @@ import logging
 log = logging.getLogger("Thug")
 
 
-class ContextAnalyzer(object):
+class ContextAnalyzer:
     def __init__(self):
         self.__init_checks()
 
@@ -34,7 +34,8 @@ class ContextAnalyzer(object):
             if name.startswith('context_analyzer_check'):
                 self.checks.append(method)
 
-    def context_analyzer_check_sharepoint_is_anonymous_user(self, window):
+    @staticmethod
+    def context_analyzer_check_sharepoint_is_anonymous_user(window):
         spPageContextInfo = getattr(window, '_spPageContextInfo', None)
         if spPageContextInfo and 'isAnonymousGuestUser' in spPageContextInfo: # pragma: no cover
             log.ThugLogging.log_classifier("sharepoint", log.ThugLogging.url, "SharePointAnonymousGuestUser")

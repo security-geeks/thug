@@ -2,12 +2,13 @@
 
 import logging
 import random
-import six
 import six.moves.urllib.parse as urlparse
+import six
+
+from thug.DOM.W3C.Style.CSS.ElementCSSInlineStyle import ElementCSSInlineStyle
 
 from .Node import Node
 from .DOMException import DOMException
-from thug.DOM.W3C.Style.CSS.ElementCSSInlineStyle import ElementCSSInlineStyle
 
 log = logging.getLogger("Thug")
 

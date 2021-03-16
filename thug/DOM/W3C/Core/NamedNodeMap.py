@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-from .Attr import Attr
 from thug.DOM.JSClass import JSClass
+
+from .Attr import Attr
 
 
 class NamedNodeMap(JSClass):

@@ -10,8 +10,8 @@ log = logging.getLogger("Thug")
 
 class DocumentFragment(Node):
     def __init__(self, doc):
-        self.tag = bs4.Tag(parser = doc, name = 'documentfragment')
-        Node.__init__(self, doc)
+        tag = bs4.Tag(parser=doc, name="documentfragment")
+        Node.__init__(self, doc, tag)
         self.__init_documentfragment_personality()
 
     def __init_documentfragment_personality(self):
@@ -34,39 +34,39 @@ class DocumentFragment(Node):
     def __init_documentfragment_personality_IE(self):
         if log.ThugOpts.Personality.browserMajorVersion > 7:
             self.querySelectorAll = self._querySelectorAll
-            self.querySelector    = self._querySelector
+            self.querySelector = self._querySelector
 
     def __init_documentfragment_personality_Firefox(self):
         self.querySelectorAll = self._querySelectorAll
-        self.querySelector    = self._querySelector
+        self.querySelector = self._querySelector
 
     def __init_documentfragment_personality_Chrome(self):
         self.querySelectorAll = self._querySelectorAll
-        self.querySelector    = self._querySelector
+        self.querySelector = self._querySelector
 
     def __init_documentfragment_personality_Safari(self):
         self.querySelectorAll = self._querySelectorAll
-        self.querySelector    = self._querySelector
+        self.querySelector = self._querySelector
 
     def _querySelectorAll(self, selectors):
         from .NodeList import NodeList
 
         try:
             s = self.tag.select(selectors)
-        except Exception: # pragma: no cover
+        except Exception:  # pragma: no cover,pylint:disable=broad-except
             return NodeList(self.doc, [])
 
         return NodeList(self.doc, s)
 
     def _querySelector(self, selectors):
-        from .DOMImplementation import DOMImplementation
-
         try:
             s = self.tag.select(selectors)
-        except Exception: # pragma: no cover
+        except Exception:  # pragma: no cover,pylint:disable=broad-except
             return None
 
-        return DOMImplementation.createHTMLElement(self, s[0]) if s and s[0] else None
+        return (
+            log.DOMImplementation.createHTMLElement(self, s[0]) if s and s[0] else None
+        )
 
     @property
     def nodeName(self):

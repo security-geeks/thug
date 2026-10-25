@@ -4,7 +4,7 @@ import logging
 import time
 import datetime
 
-import six.moves.urllib.parse as urlparse
+from urllib.parse import urlparse
 
 from .HTMLElement import HTMLElement
 from .attr_property import attr_property
@@ -14,17 +14,18 @@ log = logging.getLogger("Thug")
 
 class HTMLAnchorElement(HTMLElement):
     accessKey = attr_property("accesskey")
-    charset   = attr_property("charset", default = "")
-    coords    = attr_property("coords")
-    href      = attr_property("href")
-    hreflang  = attr_property("hreflang")
-    name      = attr_property("name")
-    rel       = attr_property("rel")
-    rev       = attr_property("rev")
-    shape     = attr_property("shape")
-    tabIndex  = attr_property("tabindex", int)
-    target    = attr_property("target")
-    type      = attr_property("type")
+    charset = attr_property("charset", default="")
+    coords = attr_property("coords")
+    download = attr_property("download")
+    href = attr_property("href")
+    hreflang = attr_property("hreflang")
+    name = attr_property("name")
+    rel = attr_property("rel")
+    rev = attr_property("rev")
+    shape = attr_property("shape")
+    tabIndex = attr_property("tabindex", int)
+    target = attr_property("target")
+    type = attr_property("type")
 
     def __init__(self, doc, tag):
         HTMLElement.__init__(self, doc, tag)
@@ -34,15 +35,15 @@ class HTMLAnchorElement(HTMLElement):
         if not self.href:
             return ":"
 
-        o = urlparse.urlparse(self.href)
-        return "{}:".format(o.scheme) if o.scheme else ":"
+        o = urlparse(self.href)
+        return f"{o.scheme}:" if o.scheme else ":"
 
     @property
     def host(self):
         if not self.href:
             return ""
 
-        o = urlparse.urlparse(self.href)
+        o = urlparse(self.href)
         return o.netloc if o.netloc else ""
 
     @property
@@ -62,6 +63,14 @@ class HTMLAnchorElement(HTMLElement):
 
         return self.host.split(":")[1]
 
+    @property
+    def pathname(self):
+        if not self.href:
+            return ""
+
+        o = urlparse(self.href)
+        return o.path if o.path else "/"
+
     def blur(self):
         pass
 
@@ -70,6 +79,6 @@ class HTMLAnchorElement(HTMLElement):
 
     def click(self):
         now = datetime.datetime.now()
-        self.tag['_clicked'] = time.mktime(now.timetuple())
+        self.tag["_clicked"] = time.mktime(now.timetuple())
         if self.href:
             log.DFT.follow_href(self.href)

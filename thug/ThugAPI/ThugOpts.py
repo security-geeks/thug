@@ -18,7 +18,8 @@
 
 import sys
 import logging
-import six.moves.urllib.parse as urlparse
+
+from urllib.parse import urlparse
 
 from thug.DOM.Personality import Personality
 
@@ -26,47 +27,52 @@ log = logging.getLogger("Thug")
 
 
 class ThugOpts(dict):
-    proxy_schemes = ('http', 'socks4', 'socks5', )
+    proxy_schemes = (
+        "http",
+        "socks4",
+        "socks5",
+        "socks5h",
+    )
 
     def __init__(self):
         super().__init__()
 
-        self._verbose           = False
-        self._debug             = False
-        self._proxy             = None
-        self._raise_for_proxy   = True
-        self.local              = False
-        self.extensive          = False
-        self._threshold         = 0
-        self._connect_timeout   = 10
-        self._timeout           = 600
-        self.ast_debug          = False
-        self.http_debug         = 0
-        self._useragent         = 'winxpie60'
-        self._referer           = 'about:blank'
-        self._events            = list()
-        self._delay             = 0
-        self._attachment        = False
-        self._file_logging      = False
-        self._json_logging      = False
-        self._es_logging        = False
-        self._code_logging      = True
-        self._cert_logging      = True
-        self._features_logging  = False
-        self._screenshot        = False
-        self._awis              = False
-        self._no_fetch          = False
-        self._broken_url        = False
-        self._ssl_verify        = False
-        self._vt_query          = False
-        self._vt_submit         = False
-        self._vt_runtime_apikey = None
-        self._mongodb_address   = None
-        self._web_tracking      = False
-        self._honeyagent        = True
-        self.activex_ready      = True
-        self._image_processing  = False
-        self.Personality        = Personality()
+        self._verbose = False
+        self._debug = False
+        self._proxy = None
+        self._raise_for_proxy = True
+        self.local = False
+        self.extensive = False
+        self._threshold = 0
+        self._connect_timeout = 10
+        self._proxy_connect_timeout = 5
+        self._timeout = 600
+        self.ast_debug = False
+        self.http_debug = 0
+        self._useragent = "winxpie60"
+        self._referer = "about:blank"
+        self._events = []
+        self._delay = 0
+        self._attachment = False
+        self._file_logging = False
+        self._json_logging = False
+        self._es_logging = False
+        self._code_logging = True
+        self._cert_logging = True
+        self._features_logging = False
+        self._screenshot = False
+        self._awis = False
+        self._no_fetch = False
+        self._broken_url = False
+        self._ssl_verify = False
+        self._mongodb_address = None
+        self._web_tracking = False
+        self._async_prefetch = False
+        self._honeyagent = True
+        self.activex_ready = True
+        self._image_processing = False
+        self._download_prevent = True
+        self.Personality = Personality()
 
     def set_verbose(self, verbose):
         self._verbose = verbose
@@ -89,10 +95,12 @@ class ThugOpts(dict):
             self._proxy = None
             return
 
-        p = urlparse.urlparse(proxy)
+        p = urlparse(proxy)
 
         if p.scheme.lower() not in self.proxy_schemes:
-            log.warning('[ERROR] Invalid proxy scheme (valid schemes: http, socks4, socks5)')
+            log.warning(
+                "[ERROR] Invalid proxy scheme (valid schemes: http, socks4, socks5, socks5h)"
+            )
             sys.exit(0)
 
         self._proxy = proxy
@@ -115,7 +123,10 @@ class ThugOpts(dict):
 
     def set_useragent(self, useragent):
         if useragent not in self.Personality:
-            log.warning('[WARNING] Invalid User Agent provided (using default "%s")', self._useragent)
+            log.warning(
+                '[WARNING] Invalid User Agent provided (using default "%s")',
+                self._useragent,
+            )
             return
 
         self._useragent = useragent
@@ -135,7 +146,7 @@ class ThugOpts(dict):
 
     def set_events(self, events):
         if not events:
-            self._events = list()
+            self._events = []
             return
 
         for e in events.split(","):
@@ -153,7 +164,7 @@ class ThugOpts(dict):
         try:
             _timeout = int(timeout)
         except ValueError:
-            log.warning('[WARNING] Ignoring invalid delay value (should be an integer)')
+            log.warning("[WARNING] Ignoring invalid delay value (should be an integer)")
             return
 
         self._delay = abs(_timeout)
@@ -232,6 +243,14 @@ class ThugOpts(dict):
 
     no_fetch = property(get_no_fetch, set_no_fetch)
 
+    def get_download_prevent(self):
+        return self._download_prevent
+
+    def set_download_prevent(self, download_prevent):
+        self._download_prevent = download_prevent
+
+    download_prevent = property(get_download_prevent, set_download_prevent)
+
     def get_threshold(self):
         return self._threshold
 
@@ -239,7 +258,9 @@ class ThugOpts(dict):
         try:
             value = int(threshold)
         except ValueError:
-            log.warning('[WARNING] Ignoring invalid threshold value (should be an integer)')
+            log.warning(
+                "[WARNING] Ignoring invalid threshold value (should be an integer)"
+            )
             return
 
         self._threshold = value
@@ -253,12 +274,32 @@ class ThugOpts(dict):
         try:
             seconds = int(timeout)
         except ValueError:
-            log.warning('[WARNING] Ignoring invalid connect timeout value (should be an integer)')
+            log.warning(
+                "[WARNING] Ignoring invalid connect timeout value (should be an integer)"
+            )
             return
 
         self._connect_timeout = seconds
 
     connect_timeout = property(get_connect_timeout, set_connect_timeout)
+
+    def get_proxy_connect_timeout(self):
+        return self._proxy_connect_timeout
+
+    def set_proxy_connect_timeout(self, timeout):
+        try:
+            seconds = int(timeout)
+        except ValueError:
+            log.warning(
+                "[WARNING] Ignoring invalid proxy connect timeout value (should be an integer)"
+            )
+            return
+
+        self._proxy_connect_timeout = seconds
+
+    proxy_connect_timeout = property(
+        get_proxy_connect_timeout, set_proxy_connect_timeout
+    )
 
     def get_timeout(self):
         return self._timeout
@@ -267,7 +308,9 @@ class ThugOpts(dict):
         try:
             seconds = int(timeout)
         except ValueError:
-            log.warning('[WARNING] Ignoring invalid timeout value (should be an integer)')
+            log.warning(
+                "[WARNING] Ignoring invalid timeout value (should be an integer)"
+            )
             return
 
         self._timeout = seconds
@@ -306,30 +349,6 @@ class ThugOpts(dict):
 
     ssl_verify = property(get_ssl_verify, set_ssl_verify)
 
-    def get_vt_query(self):
-        return self._vt_query
-
-    def set_vt_query(self, value):
-        self._vt_query = value
-
-    vt_query = property(get_vt_query, set_vt_query)
-
-    def get_vt_submit(self):
-        return self._vt_submit
-
-    def set_vt_submit(self, value):
-        self._vt_submit = value
-
-    vt_submit = property(get_vt_submit, set_vt_submit)
-
-    def get_vt_runtime_apikey(self):
-        return self._vt_runtime_apikey
-
-    def set_vt_runtime_apikey(self, vt_apikey):
-        self._vt_runtime_apikey = vt_apikey
-
-    vt_runtime_apikey = property(get_vt_runtime_apikey, set_vt_runtime_apikey)
-
     def get_web_tracking(self):
         return self._web_tracking
 
@@ -337,6 +356,14 @@ class ThugOpts(dict):
         self._web_tracking = enabled
 
     web_tracking = property(get_web_tracking, set_web_tracking)
+
+    def get_async_prefetch(self):
+        return self._async_prefetch
+
+    def set_async_prefetch(self, enabled):
+        self._async_prefetch = enabled
+
+    async_prefetch = property(get_async_prefetch, set_async_prefetch)
 
     def get_honeyagent(self):
         return self._honeyagent

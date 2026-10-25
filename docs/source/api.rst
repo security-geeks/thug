@@ -134,7 +134,7 @@ Thug API interface definition is reported below for convenience.
             """
 
         def get_attachment():
-        	"""
+            """
         	get_attachment
 
         	Return True if the attachment mode is set, False otherwise
@@ -142,8 +142,8 @@ Thug API interface definition is reported below for convenience.
         	@return: boolean
         	"""
 
-    	def set_attachment(attachment):
-        	"""
+        def set_attachment(attachment):
+            """
         	set_attachment
 
         	Set the attachment mode to the specified value
@@ -176,6 +176,24 @@ Thug API interface definition is reported below for convenience.
             reset_image_processing
 
             Disable image processing mode
+
+            @return: None
+            """
+
+        def enable_download_prevent():
+            """
+            set_download_prevent
+
+            Enable download prevention mode
+
+            @return: None
+            """
+
+        def disable_download_prevent():
+            """
+            reset_image_processing
+
+            Disable download prevention mode
 
             @return: None
             """
@@ -488,6 +506,26 @@ Thug API interface definition is reported below for convenience.
             @return: None
             """
 
+        def get_proxy_connect_timeout():
+            """
+            get_proxy_connect_timeout
+
+            Get the proxy connect timeout (in seconds)
+
+            @return: the proxy connect timeout (in seconds)
+            """
+
+        def set_proxy_connect_timeout(timeout):
+            """
+            set_proxy_connect_timeout
+
+            Set the proxy connect timeout (in seconds)
+
+            @param timeout: the proxy connect timeout (in seconds)
+            @type timeout: C{int}
+            @return: None
+            """
+
         def get_timeout():
             """
             get_timeout
@@ -554,7 +592,7 @@ Thug API interface definition is reported below for convenience.
             """
 
         def enable_cert_logging():
-        	"""
+            """
         	enable_cert_logging
 
         	Enable SSL/TLS certificate logging
@@ -658,44 +696,6 @@ Thug API interface definition is reported below for convenience.
             @return: None
             """
 
-        def set_vt_query():
-            """
-            set_vt_query
-
-            Enable VirusTotal queries for sample analysis
-
-            @return: None
-            """
-
-        def set_vt_submit():
-            """
-            set_vt_submit
-
-            Enable VirusTotal samples submit
-
-            @return: None
-            """
-
-         def get_vt_runtime_apikey():
-            """
-            get_vt_runtime_apikey
-
-            Get the VirusTotal API key set as runtime parameter (not the one defined in
-            the configuration file)
-
-            @return: string
-            """
-
-        def set_vt_runtime_apikey():
-            """
-            set_vt_runtime_apikey
-
-            Set the key to be used when interacting with VirusTotal APIs, overriding
-            any static value defined in thug.conf
-
-            @return: None
-            """
-
         def get_mongodb_instance():
             """
             get_mongodb_instance
@@ -727,6 +727,33 @@ Thug API interface definition is reported below for convenience.
             set_web_tracking
 
             Enable web client tracking inspection
+
+            @return: None
+            """
+
+        def get_async_prefetch():
+            """
+            get_async_prefetch
+
+            Return True if asynchronous prefetching mode is enabled, False otherwise.
+
+            @return: bool
+            """
+
+        def set_async_prefetch():
+            """
+            set_async_prefetch
+
+            Enable asynchronous prefetching mode
+
+            @return: None
+            """
+
+        def reset_async_prefetch():
+            """
+            set_async_prefetch
+
+            Disable asynchronous prefetching mode
 
             @return: None
             """
@@ -952,7 +979,6 @@ Thug API interface definition is reported below for convenience.
 
             @return: None
             """
-
         def log_event():
             """
             log_event

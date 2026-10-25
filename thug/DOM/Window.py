@@ -20,19 +20,22 @@ import sched
 import time
 import logging
 import traceback
-import base64
 import numbers
 import collections.abc
 import datetime
 import random
-import six.moves.urllib_parse as urllib
-import six
+import types
+
+from urllib.parse import unquote
+
 import bs4
 
 from thug.ActiveX.ActiveX import _ActiveXObject
 from thug.Java.java import java
 
 from thug.DOM.W3C import w3c
+from thug.DOM.W3C import File
+from thug.DOM.W3C import URL
 from .JSClass import JSClass
 from .JSClass import JSClassConstructor
 from .JSClass import JSClassPrototype
@@ -51,18 +54,20 @@ log = logging.getLogger("Thug")
 
 
 class Window(JSClass):
+    __symbols__ = set()
+
     class Timer:
-        max_loops  = 3
+        max_loops = 3
         max_timers = 16
 
-        def __init__(self, window, code, delay, repeat, lang = 'JavaScript'):
-            self.window  = window
-            self.code    = code
-            self.delay   = float(delay) / 1000
-            self.repeat  = repeat
-            self.lang    = lang
+        def __init__(self, window, code, delay, repeat, lang="JavaScript"):
+            self.window = window
+            self.code = code
+            self.delay = float(delay) / 1000
+            self.repeat = repeat
+            self.lang = lang
             self.running = True
-            self.loops   = self.__init_loops()
+            self.loops = self.__init_loops()
 
         def __init_loops(self):
             max_loops = self.max_loops - 1
@@ -78,14 +83,14 @@ class Window(JSClass):
 
             try:
                 sched.run()
-            except Exception as e: # pragma: no cover
+            except Exception as e:  # pragma: no cover,pylint:disable=broad-except
                 log.warning("[Timer] Scheduler error: %s", str(e))
 
         def stop(self):
             self.running = False
 
-            if self.event in sched.queue: # pragma: no cover
-                sched.cancel(self.event)
+            if self.event in sched.queue:
+                sched.cancel(self.event)  # pragma: no cover
 
         def execute(self):
             if len(self.window.timers) > self.max_timers:
@@ -100,8 +105,8 @@ class Window(JSClass):
                         self.code()
                     else:
                         ctx.eval(self.code)
-                except Exception as e: # pragma: no cover
-                    log.warning("Error while handling timer callback")
+                except Exception as e:  # pragma: no cover,pylint:disable=broad-except
+                    log.warning("Error while handling timer callback (%s)", str(e))
 
                     if log.ThugOpts.Personality.isIE():
                         raise TypeError() from e
@@ -112,25 +117,45 @@ class Window(JSClass):
                 self.loops -= 1
                 self.event = sched.enter(self.delay, 1, self.execute, ())
 
-    def __init__(self, url, dom_or_doc, navigator = None, personality = 'winxpie60', name="",
-                 target='_blank', parent = None, opener = None, replace = False, screen = None,
-                 width = 800, height = 600, left = 0, top = None, **kwds):
+    def __init__(
+        self,
+        url,
+        dom_or_doc,
+        navigator=None,
+        personality="winxpie60",
+        name="",
+        target="_blank",
+        parent=None,
+        opener=None,
+        replace=False,
+        screen=None,
+        width=800,
+        height=600,
+        left=0,
+        top=None,
+        **kwds,
+    ):
+        self._top = top if top else self
 
         self.url = url
 
-        self.doc = w3c.getDOMImplementation(dom_or_doc, **kwds) if isinstance(dom_or_doc, bs4.BeautifulSoup) else dom_or_doc
+        self.doc = (
+            w3c.getDOMImplementation(dom_or_doc, **kwds)
+            if isinstance(dom_or_doc, bs4.BeautifulSoup)
+            else dom_or_doc
+        )
 
-        self.doc.window        = self
+        self.doc.window = self
         self.doc.contentWindow = self
 
-        for p in w3c_bindings:
+        for p in w3c_bindings:  # pylint: disable=consider-using-dict-items
             setattr(self, p, w3c_bindings[p])
 
         self._navigator = navigator if navigator else Navigator(personality, self)
-        self._location  = Location(self)
-        self._history   = parent.history if parent and parent.history else History(self)
+        self._location = Location(self)
+        self._history = parent.history if parent and parent.history else History(self)
 
-        if url not in ('about:blank', ):
+        if url not in ("about:blank",):
             self._history.update(url, replace)
 
         self.doc.location = property(self.getLocation, self.setLocation)
@@ -144,82 +169,80 @@ class Window(JSClass):
         self._personality = personality
         self.__init_window_personality()
 
-        self.name          = name
-        self._left         = left
-        self._top          = top if top else self
-        self._screen_top   = random.randint(0, 30)
-        self.innerWidth    = width
-        self.innerHeight   = height
-        self.outerWidth    = width
-        self.outerHeight   = height
-        self.timers        = []
-        self.java          = java()
-
-        self._symbols      = set()
+        self.name = name
+        self._left = left
+        self._screen_top = random.randint(0, 30)
+        self.innerWidth = width
+        self.innerHeight = height
+        self.outerWidth = width
+        self.outerHeight = height
+        self.timers = []
+        self.java = java()
 
         log.MIMEHandler.window = self
 
     def __getattr__(self, key):
-        if key in self._symbols:
+        if key in ("__members__", "__methods__", "__symbols__"):
             raise AttributeError(key)
 
-        if key in ('__members__', '__methods__'):
+        if key in self.__symbols__:
             raise AttributeError(key)
 
-        if key == 'constructor':
+        if key == "constructor":
             return JSClassConstructor(self.__class__)
 
-        if key == 'prototype':
+        if key == "prototype":
             return JSClassPrototype(self.__class__)
 
-        prop = self.__dict__.setdefault('__properties__', {}).get(key, None)
+        prop = self.__dict__.setdefault("__properties__", {}).get(key, None)
 
         if prop and isinstance(prop[0], collections.abc.Callable):
             return prop[0]()
 
-        if log.ThugOpts.Personality.isIE() and key.lower() in ('wscript', 'wsh', ):
-            return self.WScript
-
         if log.ThugOpts.Personality.isIE():
+            if key.lower() in (
+                "wscript",
+                "wsh",
+            ):
+                return self.WScript
+
             if key in self.WScript.__dict__ and callable(self.WScript.__dict__[key]):
                 return self.WScript.__dict__[key]
 
-        if log.ThugOpts.Personality.isIE():
-            xmlhttp = getattr(log, 'XMLHTTP', None)
+            xmlhttp = getattr(log, "XMLHTTP", None)
 
-            if xmlhttp and key in xmlhttp:
-                return xmlhttp[key]
+            if xmlhttp and isinstance(xmlhttp, dict):
+                value = xmlhttp.get(key, None)
+                if value is not None:
+                    return value
 
-        context = self.__class__.__dict__['context'].__get__(self, Window)
+        context = self.__class__.__dict__["context"].__get__(self, Window)
 
         try:
-            self._symbols.add(key)
+            self.__symbols__.add(key)
             symbol = context.eval(key)
         except Exception as e:
             raise AttributeError(key) from e
         finally:
-            self._symbols.discard(key)
+            self.__symbols__.discard(key)
 
-        if log.JSEngine.isJSFunction(symbol):
+        if log.JSEngine.isJSFunction(symbol):  # pragma: no cover
             _method = None
             if _method is None:
-                _method = six.create_bound_method(symbol, Window)
+                _method = types.MethodType(symbol, Window)
 
             setattr(self, key, _method)
             context.locals[key] = _method
             return _method
 
-        _types = (six.string_types,
-                  bool,
-                  numbers.Number,
-                  datetime.datetime)
+        _types = (str, bool, numbers.Number, datetime.datetime)
 
         if isinstance(symbol, _types) or log.JSEngine.isJSObject(symbol):
             setattr(self, key, symbol)
             context.locals[key] = symbol
             return symbol
 
-        raise AttributeError(key) # pragma: no cover
+        raise AttributeError(key)  # pragma: no cover
 
     @property
     def closed(self):
@@ -243,7 +266,7 @@ class Window(JSClass):
     def get_top(self):
         return self._top
 
-    def set_top(self, top): # pragma: no cover
+    def set_top(self, top):  # pragma: no cover
         self._top = top
 
     top = property(get_top, set_top)
@@ -253,7 +276,7 @@ class Window(JSClass):
         return self.doc
 
     def _findAll(self, tags):
-        return self.doc.doc.find_all(tags, recursive = True)
+        return self.doc.doc.find_all(tags, recursive=True)
 
     @property
     def frames(self):
@@ -261,10 +284,9 @@ class Window(JSClass):
         from thug.DOM.W3C.HTML.HTMLCollection import HTMLCollection
 
         frames = set()
-        for frame in self._findAll(['frame', 'iframe']):
-            if not getattr(frame, '_node', None):
-                from thug.DOM.W3C.Core.DOMImplementation import DOMImplementation
-                DOMImplementation.createHTMLElement(self.window.doc, frame)
+        for frame in self._findAll(["frame", "iframe"]):
+            if not getattr(frame, "_node", None):
+                log.DOMImplementation.createHTMLElement(self.window.doc, frame)
 
             frames.add(frame._node)
 
@@ -273,7 +295,7 @@ class Window(JSClass):
     @property
     def length(self):
         """the number of frames (including iframes) in a window"""
-        return len(self._findAll(['frame', 'iframe']))
+        return len(self._findAll(["frame", "iframe"]))
 
     @property
     def history(self):
@@ -331,7 +353,11 @@ class Window(JSClass):
     def screenY(self):
         return self._screen_top
 
-    def _do_ActiveXObject(self, cls, typename = 'name'):
+    def _do_ActiveXObject(self, cls, typename="name"):
+        if cls.lower() in ("htmlfile",):
+            setattr(self.doc, "Script", self)
+            return self.doc
+
         return _ActiveXObject(self, cls, typename)
 
     def alert(self, text):
@@ -345,12 +371,14 @@ class Window(JSClass):
 
         text is a string of the text you want displayed in the alert dialog.
         """
-        log.TextClassifier.classify(log.ThugLogging.url if log.ThugOpts.local else log.last_url, str(text))
+        log.TextClassifier.classify(
+            log.ThugLogging.url if log.ThugOpts.local else log.last_url, str(text)
+        )
 
         if log.ThugOpts.features_logging:
             log.ThugLogging.Features.increase_alert_count()
 
-        log.warning('[Window] Alert Text: %s', str(text))
+        log.warning("[Window] Alert Text: %s", str(text))
 
     def back(self):
         """
@@ -363,7 +391,7 @@ class Window(JSClass):
 
         None.
         """
-        pass
+        log.warning("[Window] back()")
 
     def blur(self):
         """
@@ -376,7 +404,7 @@ class Window(JSClass):
 
         None.
         """
-        pass
+        log.warning("[Window] blur()")
 
     def captureEvents(self, eventType):
         """
@@ -389,7 +417,7 @@ class Window(JSClass):
 
         eventType is a string
         """
-        self.alert("[Captured Event] %s" % (eventType, ))
+        self.alert(f"[Captured Event] {eventType}")
 
     def clearInterval(self, intervalID):
         """
@@ -402,7 +430,7 @@ class Window(JSClass):
 
         intervalID is the ID of the specific interval you want to clear.
         """
-        if intervalID < len(self.timers):
+        if intervalID is not None and intervalID < len(self.timers):
             self.timers[intervalID].stop()
 
     def clearTimeout(self, timeoutID):
@@ -416,7 +444,7 @@ class Window(JSClass):
 
         timeoutID is the ID of the timeout you wish you clear.
         """
-        if timeoutID < len(self.timers):
+        if timeoutID is not None and timeoutID < len(self.timers):
             self.timers[timeoutID].stop()
 
     def confirm(self, text):
@@ -432,7 +460,9 @@ class Window(JSClass):
 
         result is a boolean value indicating whether OK or Cancel was selected.
         """
-        log.TextClassifier.classify(log.ThugLogging.url if log.ThugOpts.local else log.last_url, str(text))
+        log.TextClassifier.classify(
+            log.ThugLogging.url if log.ThugOpts.local else log.last_url, str(text)
+        )
         return True
 
     def dump(self, text):
@@ -446,7 +476,9 @@ class Window(JSClass):
 
         text is a string.
         """
-        log.TextClassifier.classify(log.ThugLogging.url if log.ThugOpts.local else log.last_url, str(text))
+        log.TextClassifier.classify(
+            log.ThugLogging.url if log.ThugOpts.local else log.last_url, str(text)
+        )
         self.alert(text)
 
     def focus(self):
@@ -460,7 +492,7 @@ class Window(JSClass):
 
         None.
         """
-        pass
+        log.warning("[Window] focus()")
 
     def forward(self):
         """
@@ -486,9 +518,9 @@ class Window(JSClass):
 
         None.
         """
-        pass
+        log.warning("[Window] GetAttention()")
 
-    def getSelection(self):
+    def getSelection(self):  # pylint:disable=useless-return
         """
         Returns the selection (generally text).
         Syntax
@@ -499,6 +531,7 @@ class Window(JSClass):
 
         selection is a selection object.
         """
+        log.warning("[Window] getSelection()")
         return None
 
     def home(self):
@@ -526,7 +559,7 @@ class Window(JSClass):
         deltaX is the amount of pixels to move the window horizontally.
         deltaY is the amount of pixels to move the window vertically.
         """
-        pass
+        log.warning("[Window] moveBy(%s, %s)", deltaX, deltaY)
 
     def moveTo(self, x, y):
         """
@@ -540,13 +573,15 @@ class Window(JSClass):
         x is the horizontal coordinate to be moved to.
         y is the vertical coordinate to be moved to.
         """
-        pass
+        log.warning("[Window] moveTo(%s, %s)", x, y)
 
-    def prompt(self, text, defaultText = None):
+    def prompt(self, text, defaultText=None):
         """
         Returns the text entered by the user in a prompt dialog.
         """
-        log.TextClassifier.classify(log.ThugLogging.url if log.ThugOpts.local else log.last_url, str(text))
+        log.TextClassifier.classify(
+            log.ThugLogging.url if log.ThugOpts.local else log.last_url, str(text)
+        )
         return defaultText if defaultText else ""
 
     def releaseEvents(self, eventType):
@@ -560,7 +595,7 @@ class Window(JSClass):
 
         eventType is a string
         """
-        self.alert("[Released Event] %s" % (eventType, ))
+        self.alert(f"[Released Event] {eventType}")
 
     def resizeBy(self, xDelta, yDelta):
         """
@@ -574,7 +609,7 @@ class Window(JSClass):
         xDelta is the number of pixels to grow the window horizontally.
         yDelta is the number of pixels to grow the window vertically.
         """
-        pass
+        log.warning("[Window] resizeBy(%s, %s)", xDelta, yDelta)
 
     def resizeTo(self, iWidth, iHeight):
         """
@@ -588,7 +623,7 @@ class Window(JSClass):
         iWidth is an integer representing the new width in pixels.
         iHeight is an integer value representing the new height in pixels.
         """
-        pass
+        log.warning("[Window] resizeTo(%s, %s)", iWidth, iHeight)
 
     def scroll(self, x, y):
         """
@@ -604,7 +639,7 @@ class Window(JSClass):
         y-coord is the pixel along the vertical axis of the document that you
         want displayed in the upper left.
         """
-        pass
+        log.warning("[Window] scroll(%s, %s)", x, y)
 
     def scrollBy(self, xDelta, yDelta):
         """
@@ -619,7 +654,7 @@ class Window(JSClass):
 
         yDelta is the amount of pixels to scroll vertically.
         """
-        pass
+        log.warning("[Window] scrollBy(%s, %s)", xDelta, yDelta)
 
     def scrollByLines(self, lines):
         """
@@ -632,7 +667,7 @@ class Window(JSClass):
 
         lines is the number of lines.
         """
-        pass
+        log.warning("[Window] scrollByLines(%s)", lines)
 
     def scrollByPages(self, pages):
         """
@@ -645,7 +680,7 @@ class Window(JSClass):
 
         pages is the number of pages to scroll.
         """
-        pass
+        log.warning("[Window] scrollByPages(%s)", pages)
 
     def scrollTo(self, x, y):
         """
@@ -662,9 +697,9 @@ class Window(JSClass):
         y-coord is the pixel along the vertical axis of the document that you
         want displayed in the upper left.
         """
-        pass
+        log.warning("[Window] scrollTo(%s, %s)", x, y)
 
-    def setInterval(self, f, delay, lang = 'JavaScript'):
+    def setInterval(self, f, delay, lang="JavaScript"):
         """
         Set a delay for a specific function.
         Syntax
@@ -696,7 +731,7 @@ class Window(JSClass):
 
         return len(self.timers) - 1
 
-    def setTimeout(self, f, delay = 0, lang = 'JavaScript'):
+    def setTimeout(self, f, delay=0, lang="JavaScript"):
         """
         Sets a delay for executing a function.
         Syntax
@@ -739,9 +774,9 @@ class Window(JSClass):
 
         None.
         """
-        pass
+        log.warning("[Window] stop()")
 
-    def _attachEvent(self, sEvent, fpNotify, useCapture = False):
+    def _attachEvent(self, sEvent, fpNotify, useCapture=False):  # pylint:disable=unused-argument
         if log.ThugOpts.features_logging:
             log.ThugLogging.Features.increase_attachevent_count()
 
@@ -755,25 +790,25 @@ class Window(JSClass):
         if notify is None:
             return
 
-        if notify in (fpNotify, ):
+        if notify in (fpNotify,):
             delattr(self, sEvent.lower())
 
-    def _addEventListener(self, _type, listener, useCapture = False):
+    def _addEventListener(self, _type, listener, useCapture=False):  # pylint:disable=unused-argument
         if log.ThugOpts.features_logging:
             log.ThugLogging.Features.increase_addeventlistener_count()
 
-        setattr(self, 'on%s' % (_type.lower(), ), listener)
+        setattr(self, f"on{_type.lower()}", listener)
 
-    def _removeEventListener(self, _type, listener, useCapture = False):
+    def _removeEventListener(self, _type, listener, useCapture=False):  # pylint:disable=unused-argument
         if log.ThugOpts.features_logging:
             log.ThugLogging.Features.increase_removeeventlistener_count()
 
-        _listener = getattr(self, 'on%s' % (_type.lower(), ), None)
-        if _listener is None: # pragma: no cover
-            return
+        _listener = getattr(self, f"on{_type.lower()}", None)
+        if _listener is None:
+            return  # pragma: no cover
 
-        if _listener in (listener, ):
-            delattr(self, 'on%s' % (_type.lower(), ))
+        if _listener in (listener,):
+            delattr(self, f"on{_type.lower()}")
 
     def _CollectGarbage(self):
         pass
@@ -782,14 +817,14 @@ class Window(JSClass):
         self.location = location
         return 0
 
-    def _execScript(self, code, language = "JScript"):
+    def _execScript(self, code, language="JScript"):  # pylint:disable=useless-return
         if log.ThugOpts.code_logging:
-            log.ThugLogging.add_code_snippet(code, language, 'Contained_Inside')
+            log.ThugLogging.add_code_snippet(code, language, "Contained_Inside")
 
-        if language.lower().startswith(('jscript', 'javascript')):
+        if language.lower().startswith(("jscript", "javascript")):
             self.eval(code)
 
-        if language.lower().startswith('vbs'):
+        if language.lower().startswith("vbs"):
             log.DFT.handle_vbscript_text(code)
 
         return None
@@ -822,19 +857,25 @@ class Window(JSClass):
         if not (log.ThugOpts.local and log.ThugOpts.attachment):
             self.XMLHttpRequest = self._XMLHttpRequest
 
-        self.document                 = self._document
-        self.ActiveXObject            = self._do_ActiveXObject
+        self.document = self._document
+        self.ActiveXObject = self._do_ActiveXObject
         self.DeferredListDataComplete = self._DeferredListDataComplete
-        self.CollectGarbage           = self._CollectGarbage
-        self.WScript                  = _ActiveXObject(self, "WScript.Shell")
-        self.navigate                 = self._navigate
-        self.clientInformation        = self.navigator
-        self.clipboardData            = ClipboardData()
-        self.external                 = External()
-        self.console                  = Console()
-        self.ScriptEngineMajorVersion = log.ThugOpts.Personality.ScriptEngineMajorVersion
-        self.ScriptEngineMinorVersion = log.ThugOpts.Personality.ScriptEngineMinorVersion
-        self.ScriptEngineBuildVersion = log.ThugOpts.Personality.ScriptEngineBuildVersion
+        self.CollectGarbage = self._CollectGarbage
+        self.WScript = _ActiveXObject(self, "WScript.Shell")
+        self.navigate = self._navigate
+        self.clientInformation = self.navigator
+        self.clipboardData = ClipboardData()
+        self.external = External()
+        self.console = Console()
+        self.ScriptEngineMajorVersion = (
+            log.ThugOpts.Personality.ScriptEngineMajorVersion
+        )
+        self.ScriptEngineMinorVersion = (
+            log.ThugOpts.Personality.ScriptEngineMinorVersion
+        )
+        self.ScriptEngineBuildVersion = (
+            log.ThugOpts.Personality.ScriptEngineBuildVersion
+        )
 
         if log.ThugOpts.Personality.browserMajorVersion < 11:
             self.execScript = self._execScript
@@ -842,11 +883,11 @@ class Window(JSClass):
             self.detachEvent = self._detachEvent
 
         if log.ThugOpts.Personality.browserMajorVersion >= 8:
-            self.DOMParser           = DOMParser
-            self.addEventListener    = self._addEventListener
+            self.DOMParser = DOMParser
+            self.addEventListener = self._addEventListener
             self.removeEventListener = self._removeEventListener
-            self.localStorage        = LocalStorage()
-            self.sessionStorage      = SessionStorage()
+            self.localStorage = LocalStorage()
+            self.sessionStorage = SessionStorage()
 
         self.doc.parentWindow = self._parent
 
@@ -861,26 +902,46 @@ class Window(JSClass):
         from .Sidebar import Sidebar
         from thug.DOM.W3C.DOMParser import DOMParser
 
-        self.document            = self._document
-        self.DOMParser           = DOMParser
-        self.XMLHttpRequest      = self._XMLHttpRequest
-        self.addEventListener    = self._addEventListener
+        self.document = self._document
+        self.DOMParser = DOMParser
+        self.XMLHttpRequest = self._XMLHttpRequest
+        self.addEventListener = self._addEventListener
         self.removeEventListener = self._removeEventListener
-        self.crypto              = Crypto()
-        self.sidebar             = Sidebar()
-        self.Components          = Components()
-        self.console             = Console()
-        self.localStorage        = LocalStorage()
-        self.sessionStorage      = SessionStorage()
+        self.crypto = Crypto()
+        self.sidebar = Sidebar()
+        self.Components = Components()
+        self.console = Console()
+        self.localStorage = LocalStorage()
+        self.sessionStorage = SessionStorage()
+        self.Blob = File.Blob
+        self.File = File.File
+
+        if log.ThugOpts.Personality.browserMajorVersion > 11:
+            self.navigator.mozConnection = mozConnection()
+
+        if log.ThugOpts.Personality.browserMajorVersion > 12:
+            self.Map = Map()
+
+        if log.ThugOpts.Personality.browserMajorVersion > 18:
+            self.URL = URL.URL
+
+            with self.context as ctxt:
+                ctxt.eval(
+                    """
+                    var objurl = new URL(window.url);
+                    window.URL.createObjectURL = objurl.createObjectURL;
+                    window.URL.revokeObjectURL = objurl.revokeObjectURL;
+                """
+                )
+
+        if log.ThugOpts.Personality.browserMajorVersion > 28:
+            self.URLSearchParams = URL.URLSearchParams
 
         if log.ThugOpts.Personality.browserMajorVersion > 32:
             self.RadioNodeList = None
 
         if log.ThugOpts.Personality.browserMajorVersion > 12:
             self.Map = Map()
-
-        if log.ThugOpts.Personality.browserMajorVersion > 11:
-            self.navigator.mozConnection = mozConnection()
 
         with self.context as ctxt:
             if log.ThugOpts.Personality.browserMajorVersion <= 20:
@@ -894,66 +955,101 @@ class Window(JSClass):
         from .External import External
         from thug.DOM.W3C.DOMParser import DOMParser
 
-        self.document            = self._document
-        self.DOMParser           = DOMParser
-        self.XMLHttpRequest      = self._XMLHttpRequest
-        self.addEventListener    = self._addEventListener
+        self.document = self._document
+        self.DOMParser = DOMParser
+        self.XMLHttpRequest = self._XMLHttpRequest
+        self.addEventListener = self._addEventListener
         self.removeEventListener = self._removeEventListener
-        self.clientInformation   = self.navigator
-        self.external            = External()
-        self.chrome              = Chrome()
-        self.console             = Console()
-        self.localStorage        = LocalStorage()
-        self.sessionStorage      = SessionStorage()
-        self.onmousewheel        = None
+        self.clientInformation = self.navigator
+        self.external = External()
+        self.chrome = Chrome()
+        self.console = Console()
+        self.localStorage = LocalStorage()
+        self.sessionStorage = SessionStorage()
+        self.onmousewheel = None
+        self.Blob = File.Blob
+        self.File = File.File
+
+        if log.ThugOpts.Personality.browserMajorVersion > 18:
+            self.URL = URL.URL
+            with self.context as ctxt:
+                ctxt.eval(
+                    """
+                    var objurl = new URL(window.url);
+                    window.URL.createObjectURL = objurl.createObjectURL;
+                    window.URL.revokeObjectURL = objurl.revokeObjectURL;
+                """
+                )
+
+        if log.ThugOpts.Personality.browserMajorVersion > 48:
+            self.URLSearchParams = URL.URLSearchParams
 
     def __init_window_personality_Safari(self):
         from .Console import Console
         from thug.DOM.W3C.DOMParser import DOMParser
 
-        self.document            = self._document
-        self.DOMParser           = DOMParser
-        self.XMLHttpRequest      = self._XMLHttpRequest
-        self.addEventListener    = self._addEventListener
+        self.document = self._document
+        self.DOMParser = DOMParser
+        self.XMLHttpRequest = self._XMLHttpRequest
+        self.addEventListener = self._addEventListener
         self.removeEventListener = self._removeEventListener
-        self.clientInformation   = self.navigator
-        self.console             = Console()
-        self.localStorage        = LocalStorage()
-        self.sessionStorage      = SessionStorage()
-        self.onmousewheel        = None
+        self.clientInformation = self.navigator
+        self.console = Console()
+        self.localStorage = LocalStorage()
+        self.sessionStorage = SessionStorage()
+        self.onmousewheel = None
+        self.Blob = File.Blob
+        self.File = File.File
+
+        if log.ThugOpts.Personality.browserMajorVersion > 9:
+            self.URLSearchParams = URL.URLSearchParams
+
+        if log.ThugOpts.Personality.browserMajorVersion > 13:
+            self.URL = URL.URL
+            with self.context as ctxt:
+                ctxt.eval(
+                    """
+                    var objurl = new URL(window.url);
+                    window.URL.createObjectURL = objurl.createObjectURL;
+                    window.URL.revokeObjectURL = objurl.revokeObjectURL;
+                """
+                )
 
     def eval(self, script):
-        if not script: # pragma: no cover
-            return None
+        if not script:
+            return None  # pragma: no cover
 
-        log.ThugLogging.add_code_snippet(script,
-                                         language = 'Javascript',
-                                         relationship = 'eval argument',
-                                         check = True)
+        log.ThugLogging.add_code_snippet(
+            script, language="Javascript", relationship="eval argument", check=True
+        )
 
         return self.evalScript(script)
 
     @property
     def context(self):
         # if not hasattr(self, '_context'):
-        if '_context' not in self.__dict__:
+        if "_context" not in self.__dict__:
             log.JSEngine.init_context(self)
             self._context = log.JSEngine.context
 
         return self._context
 
-    def evalScript(self, script, tag = None):
+    def evalScript(self, script, tag=None):
         if log.ThugOpts.verbose or log.ThugOpts.debug:
             log.info(script)
 
         result = 0
 
         try:
-            log.JSClassifier.classify(log.ThugLogging.url if log.ThugOpts.local else log.last_url, script)
+            log.JSClassifier.classify(
+                log.ThugLogging.url if log.ThugOpts.local else log.last_url, script
+            )
 
             if log.ThugOpts.code_logging:
-                log.ThugLogging.add_code_snippet(script, 'Javascript', 'Contained_Inside')
-        except Exception as e: # pragma: no cover
+                log.ThugLogging.add_code_snippet(
+                    script, "Javascript", "Contained_Inside"
+                )
+        except Exception as e:  # pragma: no cover,pylint:disable=broad-except
             log.warning("[Window] JSClassifier error: %s", str(e))
 
         if tag:
@@ -961,13 +1057,13 @@ class Window(JSClass):
         else:
             try:
                 body = self.doc.body
-            except Exception: # pragma: no cover
+            except Exception:  # pragma: no cover,pylint:disable=broad-except
                 # This code is for when you are desperate :)
-                body = self.doc.getElementsByTagName('body')[0]
+                body = self.doc.getElementsByTagName("body")[0]
 
             if body and body.tag.contents:
                 self.doc.current = body.tag.contents[-1]
-            else: # pragma: no cover
+            else:  # pragma: no cover
                 self.doc.current = self.doc.doc.contents[-1]
 
         with self.context as ctxt:
@@ -982,31 +1078,31 @@ class Window(JSClass):
         return result
 
     def unescape(self, s):
-        i  = 0
+        i = 0
         sc = str()
 
         if len(s) > 16:
             log.ThugLogging.shellcodes.add(s)
 
         # %xx format
-        if '%' in s and '%u' not in s:
-            return urllib.unquote(s)
+        if "%" in s and "%u" not in s:
+            return unquote(s)
 
         # %uxxxx format
         while i < len(s):
-            if s[i] == '"': # pragma: no cover
+            if s[i] == '"':  # pragma: no cover
                 i += 1
                 continue
 
-            if s[i] in ('%', ) and (i + 1) < len(s) and s[i + 1] == 'u':
+            if s[i] in ("%",) and (i + 1) < len(s) and s[i + 1] == "u":
                 if (i + 6) <= len(s):
-                    currchar = int(s[i + 2: i + 4], 16)
-                    nextchar = int(s[i + 4: i + 6], 16)
+                    currchar = int(s[i + 2 : i + 4], 16)
+                    nextchar = int(s[i + 4 : i + 6], 16)
                     sc += chr(nextchar)
                     sc += chr(currchar)
                     i += 6
                 elif (i + 3) <= len(s):
-                    currchar = int(s[i + 2: i + 4], 16)
+                    currchar = int(s[i + 2 : i + 4], 16)
                     sc += chr(currchar)
                     i += 3
             else:
@@ -1015,69 +1111,51 @@ class Window(JSClass):
 
         return sc
 
-    def atob(self, s):
-        """
-        The atob method decodes a base-64 encoded string
-        """
-        if isinstance(s, six.string_types):
-            s = s.encode()
-
-        return base64.b64decode(s)
-
-    def btoa(self, s):
-        """
-        The btoa method encodes a string in base-64
-        """
-        if isinstance(s, six.string_types):
-            s = s.encode()
-
-        return base64.b64encode(s)
-
     def decodeURIComponent(self, s):
-        return urllib.unquote(s) if s else ""
+        return unquote(s) if s else ""
 
-    def Image(self, width = 800, height = 600):
-        return self.doc.createElement('img')
+    def Image(self, width=800, height=600):  # pylint:disable=unused-argument
+        return self.doc.createElement("img")
 
     def _XMLHttpRequest(self):
-        return _ActiveXObject(self, 'microsoft.xmlhttp')
+        return _ActiveXObject(self, "microsoft.xmlhttp")
 
-    def _DeferredListDataComplete(self): # pragma: no cover
+    def _DeferredListDataComplete(self):  # pragma: no cover
         for name in self.context.locals.keys():
             local = getattr(self.context.locals, name, None)
             if not local:
                 continue
 
-            rootFolder = getattr(local, 'rootFolder', None)
+            rootFolder = getattr(local, "rootFolder", None)
             if not rootFolder:
                 continue
 
             try:
-                self._navigator.fetch(rootFolder, redirect_type = "Sharepoint")
-            except Exception:
+                self._navigator.fetch(rootFolder, redirect_type="Sharepoint")
+            except Exception:  # pylint:disable=broad-except
                 log.warning(traceback.format_exc())
 
-    def getComputedStyle(self, element, pseudoelt = None):
+    def getComputedStyle(self, element, pseudoelt=None):  # pylint:disable=unused-argument
         if log.ThugOpts.features_logging:
             log.ThugLogging.Features.increase_getcomputedstyle_count()
 
-        return getattr(element, 'style', None)
+        return getattr(element, "style", None)
 
-    def open(self, url = None, name = '_blank', specs = '', replace = False):
-        if url and not isinstance(url, six.string_types): # pragma: no cover
-            url = str(url)
+    def open(self, url=None, name="_blank", specs="", replace=False):
+        if url and not isinstance(url, str):
+            url = str(url)  # pragma: no cover
 
-        if url and url not in ('about:blank', ):
-            if self.url not in ('about:blank', ):
-                log.last_url = url # pragma: no cover
+        if url and url not in ("about:blank",):
+            if self.url not in ("about:blank",):
+                log.last_url = url  # pragma: no cover
 
             try:
-                response = self._navigator.fetch(url, redirect_type = "window open")
-            except Exception:
+                response = self._navigator.fetch(url, redirect_type="window open")
+            except Exception:  # pylint:disable=broad-except
                 return None
 
-            if response is None or not response.ok: # pragma: no cover
-                return None
+            if response is None or not response.ok:
+                return None  # pragma: no cover
 
             html = response.content
 
@@ -1085,11 +1163,15 @@ class Window(JSClass):
                 url = response.url
 
             try:
-                log.HTMLClassifier.classify(log.ThugLogging.url if log.ThugOpts.local else url, html)
-            except Exception as e: # pragma: no cover
+                log.HTMLClassifier.classify(
+                    log.ThugLogging.url if log.ThugOpts.local else url, html
+                )
+            except Exception as e:  # pragma: no cover,pylint:disable=broad-except
                 log.warning("[Window] HTMLClassifier error: %s", str(e))
 
-            content_type = response.headers.get('content-type' , None)
+            content_type = response.headers.get(
+                "content-type", log.Magic.get_mime(response.content)
+            )
             if content_type:
                 handler = log.MIMEHandler.get_handler(content_type)
 
@@ -1101,30 +1183,39 @@ class Window(JSClass):
                     return None
 
             # Log response here
-            kwds = {'referer' : self.url}
-            if 'set-cookie' in response.headers:
-                kwds['cookie'] = response.headers['set-cookie']
-            if 'last-modified' in response.headers:
-                kwds['lastModified'] = response.headers['last-modified']
+            kwds = {"referer": self.url}
+            if "set-cookie" in response.headers:
+                kwds["cookie"] = response.headers["set-cookie"]
+            if "last-modified" in response.headers:
+                kwds["lastModified"] = response.headers["last-modified"]
         else:
-            url  = 'about:blank'
-            html = ''
+            url = "about:blank"
+            html = ""
             kwds = {}
 
         dom = log.HTMLInspector.run(html, "html5lib")
 
-        for spec in specs.split(','):
-            spec = [s.strip() for s in spec.split('=')]
+        for spec in specs.split(","):
+            spec = [s.strip() for s in spec.split("=")]
 
             if len(spec) == 2:
-                if spec[0] in ['width', 'height', 'left', 'top']:
+                if spec[0] in ["width", "height", "left", "top"]:
                     kwds[spec[0]] = int(spec[1])
 
-        if name in ['_blank', '_parent', '_self', '_top']:
-            kwds['target'] = name
-            name = ''
+        if name in ["_blank", "_parent", "_self", "_top"]:
+            kwds["target"] = name
+            name = ""
         else:
-            kwds['target'] = '_blank'
+            kwds["target"] = "_blank"
 
-        return Window(url, dom, navigator = None, personality = self._personality,
-                        name = name, parent = self, opener = self, replace = replace, **kwds)
+        return Window(
+            url,
+            dom,
+            navigator=None,
+            personality=self._personality,
+            name=name,
+            parent=self,
+            opener=self,
+            replace=replace,
+            **kwds,
+        )

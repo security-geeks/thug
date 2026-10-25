@@ -24,39 +24,42 @@ import zipfile
 import tempfile
 import pefile
 import magic
-import ssdeep
-
-from thug.Magic.Magic import Magic
 
 log = logging.getLogger("Thug")
 
 
 class SampleLogging:
     doc_mime_types = (
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
 
     rtf_mime_types = (
-        'text/rtf',
-        'application/rtf',
+        "text/rtf",
+        "application/rtf",
     )
 
-    MAX_JAR_FILE_SIZE = 16 * 1024 * 1024
+    MB = 1024 * 1024
+
+    MAX_CAB_FILE_SIZE = 32 * MB
+    MAX_DOC_FILE_SIZE = 32 * MB
+    MAX_ELF_FILE_SIZE = 32 * MB
+    MAX_JAR_FILE_SIZE = 32 * MB
+    MAX_PDF_FILE_SIZE = 32 * MB
+    MAX_PE_FILE_SIZE = 32 * MB
+    MAX_RTF_FILE_SIZE = 32 * MB
+    MAX_SWF_FILE_SIZE = 32 * MB
 
     def __init__(self):
-        self.types = ('PE',
-                      'PDF',
-                      'JAR',
-                      'SWF',
-                      'DOC',
-                      'RTF', )
+        self.types = ("PE", "ELF", "PDF", "JAR", "SWF", "DOC", "RTF", "CAB")
 
-    @staticmethod
-    def is_pe(data):
+    def is_pe(self, data):
+        if len(data) > self.MAX_PE_FILE_SIZE:
+            return False  # pragma: no cover
+
         try:
-            pefile.PE(data = data, fast_load = True)
-        except Exception:
+            pefile.PE(data=data, fast_load=True)
+        except Exception:  # pylint:disable=broad-except
             return False
 
         return True
@@ -64,85 +67,108 @@ class SampleLogging:
     @staticmethod
     def get_imphash(data):
         try:
-            pe = pefile.PE(data = data)
-        except Exception:
+            pe = pefile.PE(data=data)
+        except Exception:  # pylint:disable=broad-except
             return None
 
         return pe.get_imphash()
 
-    @staticmethod
-    def is_pdf(data):
+    def is_pdf(self, data):
+        if len(data) > self.MAX_PDF_FILE_SIZE:
+            return False  # pragma: no cover
+
         data = data.encode() if isinstance(data, str) else data
-        return data[:1024].find(b'%PDF') != -1
+        return data[:1024].find(b"%PDF") != -1
+
+    def is_elf(self, data):
+        if len(data) > self.MAX_ELF_FILE_SIZE:
+            return False  # pragma: no cover
+
+        data = data.encode() if isinstance(data, str) else data
+        return data.startswith(b"\x7fELF")
 
     def is_jar(self, data):
         result = False
 
         if len(data) > self.MAX_JAR_FILE_SIZE:
-            return result # pragma: no cover
+            return result  # pragma: no cover
 
         data = data.encode() if isinstance(data, str) else data
 
-        fd, jar = tempfile.mkstemp()
-        with open(jar, 'wb') as fd:
+        _, jar = tempfile.mkstemp()
+        with open(jar, "wb") as fd:
             fd.write(data)
 
         try:
-            z = zipfile.ZipFile(jar)
-            result = any(t.endswith('.class') for t in z.namelist())
-        except Exception:
+            with zipfile.ZipFile(jar) as z:
+                result = any(t.endswith(".class") for t in z.namelist())
+        except Exception:  # pylint:disable=broad-except
             pass
 
         os.remove(jar)
         return result
 
-    @staticmethod
-    def is_swf(data):
+    def is_swf(self, data):
+        if len(data) > self.MAX_SWF_FILE_SIZE:
+            return False  # pragma: no cover
+
         data = data.encode() if isinstance(data, str) else data
-        return data.startswith(b'CWS') or data.startswith(b'FWS')
+        return data.startswith(b"CWS") or data.startswith(b"FWS")
 
     def is_doc(self, data):
+        if len(data) > self.MAX_DOC_FILE_SIZE:
+            return False  # pragma: no cover
+
         data = data.encode() if isinstance(data, str) else data
-        return Magic(data).get_mime() in self.doc_mime_types
+        return log.Magic.get_mime(data) in self.doc_mime_types
 
     def is_rtf(self, data):
-        return magic.from_buffer(data, mime = True) in self.rtf_mime_types
+        if len(data) > self.MAX_RTF_FILE_SIZE:
+            return False  # pragma: no cover
+
+        return magic.from_buffer(data, mime=True) in self.rtf_mime_types
+
+    def is_cab(self, data):
+        if len(data) > self.MAX_CAB_FILE_SIZE:
+            return False  # pragma: no cover
+
+        data = data.encode() if isinstance(data, str) else data
+        return data.startswith(b"MSCF")
 
     def get_sample_type(self, data):
         for t in self.types:
-            p = getattr(self, 'is_%s' % (t.lower(), ), None)
+            p = getattr(self, f"is_{t.lower()}", None)
             if p and p(data):
                 return t
 
         return None
 
-    def build_sample(self, data, url = None, sampletype = None):
+    def build_sample(self, data, url=None, sampletype=None):
         if not data:
             return None
 
-        p = dict()
+        p = {}
 
         if sampletype:
             data = data.encode() if isinstance(data, str) else data
-            p['type'] = sampletype
+            p["type"] = sampletype
         else:
-            p['type'] = self.get_sample_type(data)
+            p["type"] = self.get_sample_type(data)
 
-        if p['type'] is None:
+        if p["type"] is None:
             return None
 
-        p['md5']    = hashlib.md5(data).hexdigest() # nosec
-        p['sha1']   = hashlib.sha1(data).hexdigest() # nosec
-        p['sha256'] = hashlib.sha256(data).hexdigest()
-        p['ssdeep'] = ssdeep.hash(data)
+        p["md5"] = hashlib.md5(data).hexdigest()  # nosec
+        p["sha1"] = hashlib.sha1(data).hexdigest()  # nosec
+        p["sha256"] = hashlib.sha256(data).hexdigest()
 
-        if p['type'] in ('PE', ):
+        if p["type"] in ("PE",):
             imphash = self.get_imphash(data)
             if imphash:
-                p['imphash'] = imphash
+                p["imphash"] = imphash
 
         if url:
-            p['url'] = url
+            p["url"] = url
 
-        p['data'] = base64.b64encode(data).decode()
+        p["data"] = base64.b64encode(data).decode()
         return p

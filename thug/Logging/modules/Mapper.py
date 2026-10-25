@@ -25,13 +25,14 @@
 
 import os
 import json
-import fnmatch
-import six.moves.urllib.parse as urlparse
+
+from urllib.parse import urlparse
 
 try:
     import pygraphviz
+
     PYGRAPHVIZ_MODULE = True
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     PYGRAPHVIZ_MODULE = False
 
 
@@ -43,12 +44,13 @@ class DictDiffer:
     (3) keys same in both but changed values
     (4) keys same in both and unchanged values
     """
+
     def __init__(self, current_dict, past_dict):
         self.current_dict = current_dict
-        self.past_dict    = past_dict
-        self.set_current  = set(current_dict.keys())
-        self.set_past     = set(past_dict.keys())
-        self.intersect    = self.set_current.intersection(self.set_past)
+        self.past_dict = past_dict
+        self.set_current = set(current_dict.keys())
+        self.set_past = set(past_dict.keys())
+        self.intersect = self.set_current.intersection(self.set_past)
 
     def added(self):
         return self.set_current - self.intersect
@@ -57,10 +59,14 @@ class DictDiffer:
         return self.set_past - self.intersect
 
     def changed(self):
-        return set(o for o in self.intersect if self.past_dict[o] != self.current_dict[o])
+        return set(
+            o for o in self.intersect if self.past_dict[o] != self.current_dict[o]
+        )
 
     def unchanged(self):
-        return set(o for o in self.intersect if self.past_dict[o] == self.current_dict[o])
+        return set(
+            o for o in self.intersect if self.past_dict[o] == self.current_dict[o]
+        )
 
     def anychange(self):
         return self.added() or self.removed() or self.changed()
@@ -68,43 +74,42 @@ class DictDiffer:
 
 class Mapper:
     """
-        Map URL relationships
+    Map URL relationships
     """
 
-    markup_types = ("text/html",
-                    "text/xml",
-                    "text/css", )
+    markup_types = (
+        "text/html",
+        "text/xml",
+        "text/css",
+    )
 
-    image_types  = ("image/", )
+    image_types = ("image/",)
 
-    exec_types   = ("application/javascript",
-                    "text/javascript",
-                    "application/x-javascript")
+    exec_types = (
+        "application/javascript",
+        "text/javascript",
+        "application/x-javascript",
+    )
 
-    def __init__(self, resdir, simplify = False):
+    def __init__(self, resdir, simplify=False):
         """
         @resdir     : Directory to store the result svg in
         @simplify   : Reduce the urls to server names
         """
         self.simplify = simplify
 
-        self.data = {
-                        "locations"   : [],
-                        "connections" : []
-                    }
+        self.data = {"locations": [], "connections": []}
 
-        self.first_track = True   # flag indicating that we did not follow a track yet
+        self.first_track = True  # flag indicating that we did not follow a track yet
         self.__init_graph(resdir)
 
     def __init_graph(self, resdir):
         if not PYGRAPHVIZ_MODULE:
-            return # pragma: no cover
+            return  # pragma: no cover
 
-        graphdir     = os.path.abspath(os.path.join(resdir, os.pardir))
+        graphdir = os.path.abspath(os.path.join(resdir, os.pardir))
         self.svgfile = os.path.join(graphdir, "graph.svg")
-        self.graph   = pygraphviz.AGraph(strict   = False,
-                                         directed = True,
-                                         rankdir  = 'LR')
+        self.graph = pygraphviz.AGraph(strict=False, directed=True, rankdir="LR")
 
     @staticmethod
     def _check_content_type(loc, t):
@@ -150,7 +155,7 @@ class Mapper:
 
     @staticmethod
     def get_color(con):
-        if con["method"] in ("iframe", ):
+        if con["method"] in ("iframe",):
             return "orange"
 
         return None
@@ -177,12 +182,12 @@ class Mapper:
 
                 shape = self.get_shape(loc)
                 if shape:
-                    node.attr['shape'] = shape # pylint:disable=no-member
+                    node.attr["shape"] = shape  # pylint:disable=no-member
 
                 fillcolor = self.get_fillcolor(loc)
                 if fillcolor:
-                    node.attr['style']     = 'filled' # pylint:disable=no-member
-                    node.attr['fillcolor'] = fillcolor # pylint:disable=no-member
+                    node.attr["style"] = "filled"  # pylint:disable=no-member
+                    node.attr["fillcolor"] = fillcolor  # pylint:disable=no-member
 
         if "connections" in self.data:
             # Add edges
@@ -194,31 +199,31 @@ class Mapper:
 
                 _s = self.normalize_url(con["source"])
                 source = self.graph.get_node(_s)
-                if not source: # pragma: no cover
+                if not source:  # pragma: no cover
                     source = _s
 
                 _d = self.normalize_url(con["destination"])
                 destination = self.graph.get_node(_d)
-                if not destination: # pragma: no cover
+                if not destination:  # pragma: no cover
                     destination = _d
 
                 self.graph.add_edge(source, destination)
                 edge = self.graph.get_edge(source, destination)
-                edge.attr['label'] = "[{}] {}".format(count, con['method']) # pylint:disable=no-member
+                edge.attr["label"] = f"[{count}] {con['method']}"  # pylint:disable=no-member
                 count += 1
 
                 color = self.get_color(con)
                 if color:
-                    edge.attr['color'] = color # pylint:disable=no-member
+                    edge.attr["color"] = color  # pylint:disable=no-member
 
     def add_location(self, loc):
         """
-            Add location information to location data
+        Add location information to location data
         """
         loc["display"] = True
 
         if self.simplify:
-            url = urlparse.urlparse(loc["url"]).netloc
+            url = urlparse(loc["url"]).netloc
             if url:
                 loc["url"] = url
 
@@ -234,33 +239,35 @@ class Mapper:
         Generate a weak location for the given url.
         """
 
-        for l in self.data["locations"]:
-            if l["url"] == url:
+        for location in self.data["locations"]:
+            if location["url"] == url:
                 return
 
-        loc = {'mimetype'       : '',
-               'url'            : url,
-               'size'           : 0,
-               'flags'          : {},
-               'sha256'         : None,
-               'content-type'   : None,
-               'display'        : True,
-               'md5'            : None}
+        loc = {
+            "mimetype": "",
+            "url": url,
+            "size": 0,
+            "flags": {},
+            "sha256": None,
+            "content-type": None,
+            "display": True,
+            "md5": None,
+        }
 
         self.add_location(loc)
 
     def add_connection(self, con):
         """
-            Add connection information to connection data
+        Add connection information to connection data
         """
         con["display"] = True
 
         if self.simplify:
-            url = urlparse.urlparse(con["source"]).netloc
+            url = urlparse(con["source"]).netloc
             if url:
                 con["source"] = url
 
-            url = urlparse.urlparse(con["destination"]).netloc
+            url = urlparse(con["destination"]).netloc
             if url:
                 con["destination"] = url
 
@@ -276,7 +283,7 @@ class Mapper:
 
     def add_data(self, data):
         if not PYGRAPHVIZ_MODULE:
-            return # pragma: no cover
+            return  # pragma: no cover
 
         # Add nodes
         if "locations" in data:
@@ -289,53 +296,54 @@ class Mapper:
 
     def add_file(self, filename):
         """
-            Add data file
+        Add data file
         """
         try:
-            self.add_data(json.load(open(filename, "r")))
+            with open(filename, encoding="utf-8", mode="r") as fd:
+                self.add_data(json.load(fd))
         except ValueError:
             pass
 
     def write_svg(self):
         """
-            Create SVG file
+        Create SVG file
         """
         if not PYGRAPHVIZ_MODULE:
-            return # pragma: no cover
+            return  # pragma: no cover
 
         self.dot_from_data()
 
         try:
-            self.graph.layout(prog = 'dot')
-            self.graph.draw(self.svgfile, format = 'svg')
-        except Exception: # pragma: no cover
+            self.graph.layout(prog="dot")
+            self.graph.draw(self.svgfile, format="svg")
+        except Exception:  # pragma: no cover,pylint:disable=broad-except
             pass
 
     def activate(self, conto):
         """
-            Iterate through data and set display for hot connections
+        Iterate through data and set display for hot connections
         """
 
         tofix = []
 
-        for c in self.data["connections"]:
-            if c["display"] is False and c["destination"] == conto:
-                c["display"] = True
-                tofix.append(c["source"])
+        for connection in self.data["connections"]:
+            if connection["display"] is False and connection["destination"] == conto:
+                connection["display"] = True
+                tofix.append(connection["source"])
 
-        for l in self.data["locations"]:
-            if l["url"] == conto or l["url"] in tofix:
-                l["display"] = True
+        for location in self.data["locations"]:
+            if location["url"] == conto or location["url"] in tofix:
+                location["display"] = True
 
-        for t in tofix:
-            self.activate(t)
+        for elem in tofix:
+            self.activate(elem)
 
     def follow_track(self, end):
         """
-            Follow the track between entry point of the analysis and the exploit URL.
-            Remove all non-relevant stuff
+        Follow the track between entry point of the analysis and the exploit URL.
+        Remove all non-relevant stuff
 
-            @end: end url to track the connections to
+        @end: end url to track the connections to
         """
 
         if self.first_track:
@@ -350,74 +358,11 @@ class Mapper:
 
     def write_text(self):
         """
-            Return text representation
+        Return text representation
         """
         res = ""
         for con in self.data["connections"]:
             if con["display"]:
-                res += "%s -- %s --> %s \n" % (str(con["source"]),
-                                               str(con["method"]),
-                                               str(con["destination"]))
+                res += f"{str(con['source'])} -- {str(con['method'])} --> {str(con['destination'])} {os.linesep}"
+
         return res
-
-
-def allFiles(root, patterns = "*", single_level = False, yield_folders = False):  # pragma: no cover
-    """
-        Walk files
-    """
-
-    patterns = patterns.split(";")
-    for path, subdirs, files in os.walk(root):
-        if yield_folders:
-            files.extend(subdirs)
-
-        files.sort()
-
-        for name in files:
-            for pattern in patterns:
-                if fnmatch.fnmatch(name, pattern):
-                    yield os.path.join(path, name)
-                    break
-
-        if single_level:
-            break
-
-
-if __name__ == "__main__":  # pragma: no cover
-    import argparse
-
-    parser = argparse.ArgumentParser(description = 'Receives jobs and starts Thug to process them')
-
-    parser.add_argument('--resdir',
-                        help = 'Result dir',
-                        default = ".")
-
-    parser.add_argument('--source',
-                        help = 'Source file or directory',
-                        default = "avlog.json")
-
-    parser.add_argument('--simplify',
-                        help = 'Reduce the URLs to servernames',
-                        default = False,
-                        action = "store_true")
-
-    parser.add_argument('--tracks',
-                        type = str,
-                        nargs='+',
-                        help='URLs to track to',
-                        default = None)
-
-    args = parser.parse_args()
-
-    m = Mapper(args.resdir, simplify = args.simplify)
-    if os.path.isdir(args.source):
-        for afile in allFiles(args.source, "analysis.json"):
-            m.add_file(afile)
-    else:
-        m.add_file(args.source)
-
-    if args.tracks:
-        for atrack in args.tracks:
-            m.follow_track(atrack)
-
-    m.write_svg()

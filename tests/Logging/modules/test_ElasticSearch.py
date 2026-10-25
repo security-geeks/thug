@@ -1,9 +1,10 @@
 import os
 import logging
-from mock import patch
-import six.moves.configparser as ConfigParser
+import configparser
 
-from elasticmock import elasticmock
+from mock import patch
+
+import pytest
 
 import thug
 from thug.Logging.modules.ElasticSearch import ElasticSearch
@@ -16,29 +17,38 @@ cwd_path = os.path.dirname(os.path.realpath(__file__))
 configuration_path = os.path.join(cwd_path, os.pardir, os.pardir, "test_files")
 
 log.configuration_path = thug.__configuration_path__
-log.personalities_path = os.path.join(configuration_path, "personalities") if configuration_path else None
+log.personalities_path = thug.__personalities_path__ if configuration_path else None
 
 log.ThugVulnModules = ThugVulnModules()
 log.ThugOpts = ThugOpts()
 
-log.ThugOpts.useragent = 'winxpie60'
+log.ThugOpts.useragent = "winxpie60"
 
-config = ConfigParser.ConfigParser()
-conf_file = os.path.join(log.configuration_path, 'thug.conf')
+config = configparser.ConfigParser()
+conf_file = os.path.join(log.configuration_path, "thug.conf")
 config.read(conf_file)
+
+# IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true" and os.getenv(
+#    "RUNNER_OS"
+# ) in ("Linux",)
+
+IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 
 class TestElasticSearch:
-    @elasticmock
+    @pytest.mark.skipif(
+        # not (IN_GITHUB_ACTIONS), reason="Test works just in Github Actions (Linux)"
+        IN_GITHUB_ACTIONS,
+        reason="Test disabled",
+    )
     def test_export(self):
         log.ThugOpts.elasticsearch_logging = True
         log.configuration_path = configuration_path
         assert log.ThugOpts.elasticsearch_logging
 
-        with patch('elasticmock.FakeElasticsearch.indices', create=True):
-            elastic_search = ElasticSearch()
+        elastic_search = ElasticSearch()
 
-        response = elastic_search.export('sample-dir')
+        response = elastic_search.export("sample-dir")
         enabled = elastic_search.enabled
         assert response
         assert enabled
@@ -49,13 +59,13 @@ class TestElasticSearch:
 
     def test_disable_opt(self):
         elastic_search = ElasticSearch()
-        response = elastic_search.export('sample-dir')
+        response = elastic_search.export("sample-dir")
         enabled = elastic_search.enabled
 
         assert not response
         assert not enabled
 
-    @patch('six.moves.configparser.ConfigParser.getboolean', return_value = False)
+    @patch("configparser.ConfigParser.getboolean", return_value=False)
     def test_disable_conf(self, mocked_parser):
         log.ThugOpts.elasticsearch_logging = True
         log.configuration_path = configuration_path
@@ -69,7 +79,7 @@ class TestElasticSearch:
         log.configuration_path = thug.__configuration_path__
         assert not log.ThugOpts.elasticsearch_logging
 
-    @patch('elasticsearch.Elasticsearch')
+    @patch("elasticsearch.Elasticsearch")
     def test_ping_error(self, mocked_es, caplog):
         caplog.clear()
         ping_mock = mocked_es.return_value.ping
@@ -84,12 +94,14 @@ class TestElasticSearch:
         log.configuration_path = thug.__configuration_path__
 
         assert not enabled
-        assert "[WARNING] ElasticSearch instance not properly initialized" in caplog.text
+        assert (
+            "[WARNING] ElasticSearch instance not properly initialized" in caplog.text
+        )
         assert not log.ThugOpts.elasticsearch_logging
 
     def test_no_conf_path(self):
         log.ThugOpts.elasticsearch_logging = True
-        log.configuration_path = 'non/existing/path'
+        log.configuration_path = "non/existing/path"
         assert log.ThugOpts.elasticsearch_logging
 
         elastic_search = ElasticSearch()

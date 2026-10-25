@@ -13,8 +13,7 @@ class DocumentType(Node):
     RE_DOCTYPE = re.compile(r"^(\w+)", re.M + re.S)
 
     def __init__(self, doc, tag):
-        self.tag = tag
-        Node.__init__(self, doc)
+        Node.__init__(self, doc, tag)
         self.__init_documenttype_personality()
 
     def __init_documenttype_personality(self):
@@ -22,7 +21,7 @@ class DocumentType(Node):
             self.__init_node_personality_IE()
 
     def __init_node_personality_IE(self):
-        if log.ThugOpts.Personality.browserMajorVersion in (9, ):
+        if log.ThugOpts.Personality.browserMajorVersion in (9,):
             self.entities = NamedNodeMap(self.doc, self.tag)
             self.notations = NamedNodeMap(self.doc, self.tag)
 

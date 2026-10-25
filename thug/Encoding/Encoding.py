@@ -16,15 +16,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA  02111-1307  USA
 
-
-import six
-import cchardet
+import charset_normalizer
 
 
 class Encoding:
     @staticmethod
     def detect(data):
-        if isinstance(data, six.string_types):
+        if isinstance(data, str):
             data = data.encode()
 
-        return cchardet.detect(data)
+        return charset_normalizer.detect(data)

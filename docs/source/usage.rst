@@ -45,10 +45,8 @@ Let's start our Thug tour by taking a look at the options it provides.
         -O, --connect-timeout           Set the connect timeout (in seconds, default: 10 seconds)
         -T, --timeout=                  Set the analysis timeout (in seconds, default: 600 seconds)
         -c, --broken-url                Set the broken URL mode
-        -y, --vtquery                   Query VirusTotal for samples analysis
-        -s, --vtsubmit                  Submit samples to VirusTotal
-        -b, --vt-apikey=                VirusTotal API key to be used at runtime
         -z, --web-tracking              Enable web client tracking inspection
+        -b, --async-prefetch            Enable async prefetching mode
         -k, --no-honeyagent             Disable HoneyAgent support
         -a, --image-processing          Enable image processing analysis
         -E, --awis                      Enable AWS Alexa Web Information Service (AWIS)
@@ -84,7 +82,7 @@ Let's start our Thug tour by taking a look at the options it provides.
         -U, --no-cert-logging           Disable SSL/TLS certificate logging
 
     Proxy Format:
-        scheme://[username:password@]host:port (supported schemes: http, socks4, socks5)
+        scheme://[username:password@]host:port (supported schemes: http, socks4, socks5, socks5h)
 
 
 Before diving deep into details let's take a look at the available personalities
@@ -681,10 +679,10 @@ Proxy support
 -------------
 
 Another really useful option is *-p (--proxy)* which allows to specify a proxy. Currently Thug
-supports HTTP, SOCKS4 and SOCKS5 proxy using the following format
+supports HTTP, SOCKS4, SOCKS5 and SOCKS5H proxy using the following format
         
         scheme://[username:password@]host:port 
-        (supported schemes: http, socks4, socks5)
+        (supported schemes: http, socks4, socks5, socks5h)
 
 This option allows Thug to make use of Tor in order to anonymize the access to a malicious 
 page. The trick is quite simple and requires a Tor instance up and running. Simply run Thug
@@ -893,4 +891,4 @@ option. Simply running Thug this way (please note the interval is expressed in m
  
          ~ $ thug -w 2000 "http://[omitted]/main.php?page=8c6c59becaa0da07"
  
-will force a maximum delay of 2 seconds. 
+will force a maximum delay of 2 seconds.

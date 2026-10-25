@@ -21,6 +21,7 @@ import errno
 import hashlib
 import logging
 import datetime
+import tempfile
 
 log = logging.getLogger("Thug")
 
@@ -31,21 +32,29 @@ class BaseLogging:
 
     @staticmethod
     def check_module(module, config):
-        if not getattr(log.ThugOpts, "%s_logging" % (module, ), True):
+        if not getattr(log.ThugOpts, f"{module}_logging", True):
             return False
 
-        return config.getboolean(module, 'enable')
+        return config.getboolean(module, "enable")
 
     def set_basedir(self, url):
         if self.baseDir:
             return
 
         t = datetime.datetime.now()
-        m = hashlib.md5() # nosec
-        m.update(url.encode('utf8'))
+        m = hashlib.md5()  # nosec
+        m.update(url.encode("utf8"))
 
-        base = os.getenv('THUG_LOGBASE', os.pardir if os.access(os.pardir, os.W_OK) else '/tmp/thug') # nosec
-        self.baseDir = os.path.join(base, 'logs', m.hexdigest(), t.strftime("%Y%m%d%H%M%S"))
+        cwd = os.getcwd()
+
+        base = os.getenv(
+            "THUG_LOGBASE",
+            cwd if os.access(cwd, os.W_OK) else tempfile.mkdtemp(),
+        )
+
+        self.baseDir = os.path.join(
+            base, "thug-logs", m.hexdigest(), t.strftime("%Y%m%d%H%M%S")
+        )
 
         if not log.ThugOpts.file_logging:
             return
@@ -55,19 +64,19 @@ class BaseLogging:
         except OSError as e:
             if e.errno == errno.EEXIST:
                 pass
-            else: # pragma: no cover
+            else:  # pragma: no cover
                 raise
 
-        thug_csv = os.path.join(base, 'logs', 'thug.csv')
-        csv_line = '{},{}\n'.format(m.hexdigest(), url)
+        thug_csv = os.path.join(base, "thug-logs", "thug.csv")
+        csv_line = f"{m.hexdigest()},{url}\n"
 
         if os.path.exists(thug_csv):
-            with open(thug_csv, 'r') as fd:
+            with open(thug_csv, encoding="utf-8", mode="r") as fd:
                 for line in fd.readlines():
                     if line == csv_line:
                         return
 
-        with open(thug_csv, 'at+') as fd:
+        with open(thug_csv, encoding="utf-8", mode="at+") as fd:
             fd.write(csv_line)
 
     def set_absbasedir(self, basedir):

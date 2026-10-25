@@ -27,7 +27,22 @@
 	alert("mediaKeys: " + d.mediaKeys);
 	alert("networkState: " + d.networkState);
 	alert("sinkId: " + d.sinkId);
-	
+	alert("audioTracks: " + d.audioTracks);
+	alert("audioTracks length: " + d.audioTracks.length);
+	alert("audioTracks first item: " + d.audioTracks[0]);
+	alert("textTracks: " + d.textTracks);
+	alert("textTracks length: " + d.textTracks.length);
+	alert("textTracks first item: " + d.textTracks.getTrackById(0));
+	alert("buffered length: " + d.buffered.length);
+
+	try {
+		d.buffered.start(0);
+	} catch (error) {};
+
+	try {
+		d.buffered.end(0);
+	} catch (error) {};
+
 	d.load();
 	d.play();
 	d.pause();

@@ -1,13 +1,19 @@
+import os
+
 from thug.ThugAPI.ThugAPI import ThugAPI
 
 
 class TestMIMEHandler(object):
-    def do_perform_test(self, caplog, url, expected, type_ = "remote"):
+    cwd_path = os.path.dirname(os.path.realpath(__file__))
+    misc_path = os.path.join(cwd_path, os.pardir, "samples/misc")
+
+    def do_perform_test(self, caplog, url, expected, type_="remote"):
         thug = ThugAPI()
 
-        thug.set_useragent('win7ie90')
+        thug.set_useragent("win7ie90")
         thug.set_features_logging()
         thug.set_ssl_verify()
+        thug.disable_download_prevent()
         thug.log_init(url)
 
         m = getattr(thug, "run_{}".format(type_))
@@ -25,5 +31,15 @@ class TestMIMEHandler(object):
         assert matches >= len(expected)
 
     def test_zip_handler(self, caplog):
-        expected = ['[Window] Alert Text: Foobar']
-        self.do_perform_test(caplog, "https://github.com/buffer/thug/raw/master/tests/test_files/test.js.zip", expected)
+        expected = ["[Window] Alert Text: Foobar"]
+        self.do_perform_test(
+            caplog,
+            "https://github.com/buffer/thug/raw/master/tests/test_files/test.js.zip",
+            expected,
+        )
+
+    def test_svg_xml_handler(self, caplog):
+        sample = os.path.join(self.misc_path, "testSVGXMLHandler.html")
+
+        expected = ["[Window] Alert Text: Hello from SVG Javascript"]
+        self.do_perform_test(caplog, sample, expected, "local")

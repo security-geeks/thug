@@ -19,16 +19,12 @@
 import os
 import sys
 import logging
-import six.moves.urllib.parse as urlparse
-import six
-import bs4
-from lxml.html import tostring
-from lxml.html import builder as E
-from zope.interface import implementer
 
-from bs4.element import NavigableString
-from bs4.element import CData
-from bs4.element import Script
+from urllib.parse import urlparse
+
+import bs4
+
+from zope.interface import implementer
 
 import thug
 from thug.DOM.W3C import w3c
@@ -40,7 +36,9 @@ from thug.DOM.MIMEHandler import MIMEHandler
 from thug.DOM.SchemeHandler import SchemeHandler
 from thug.WebTracking.WebTracking import WebTracking
 from thug.Encoding.Encoding import Encoding
+from thug.Magic.Magic import Magic
 from thug.Logging.ThugLogging import ThugLogging
+from thug.DOM.W3C.Core.DOMImplementation import DOMImplementation
 
 from thug.DOM.JSEngine import JSEngine
 from thug.Classifier.JSClassifier import JSClassifier
@@ -65,54 +63,66 @@ log.setLevel(logging.WARN)
 
 @implementer(IThugAPI)
 class ThugAPI:
-    def __init__(self, configuration_path = thug.__configuration_path__):
+    def __init__(self, configuration_path=thug.__configuration_path__):
         self.__init_conf(configuration_path)
         self.__init_jsengine()
         self.__init_pyhooks()
         self.__init_core()
+        self.__init_objcache()
+        self.__init_urlobjects()
         self.__init_classifiers()
         self.__init_opaque_filter()
         self.__init_trace()
 
     def __init_conf(self, configuration_path):
         log.configuration_path = configuration_path
-        log.personalities_path = os.path.join(configuration_path, "personalities") if configuration_path else None
+        log.personalities_path = (
+            thug.__personalities_path__ if configuration_path else None
+        )
 
     def __init_jsengine(self):
         log.JSEngine = JSEngine()
 
     def __init_core(self):
-        log.ThugOpts        = ThugOpts()
+        log.ThugOpts = ThugOpts()
         log.ThugVulnModules = ThugVulnModules()
-        log.MIMEHandler     = MIMEHandler()
-        log.SchemeHandler   = SchemeHandler()
-        log.Encoding        = Encoding()
-        log.WebTracking     = WebTracking()
-        log.HTMLInspector   = HTMLInspector()
+        log.MIMEHandler = MIMEHandler()
+        log.SchemeHandler = SchemeHandler()
+        log.Encoding = Encoding()
+        log.Magic = Magic()
+        log.WebTracking = WebTracking()
+        log.HTMLInspector = HTMLInspector()
+
+    def __init_urlobjects(self):
+        log.UrlObjects = {}
+
+    def __init_objcache(self):
+        log.Window = Window
+        log.DOMImplementation = DOMImplementation
 
     def __init_classifiers(self):
-        log.HTMLClassifier   = HTMLClassifier()
-        log.JSClassifier     = JSClassifier()
-        log.VBSClassifier    = VBSClassifier()
-        log.URLClassifier    = URLClassifier()
+        log.HTMLClassifier = HTMLClassifier()
+        log.JSClassifier = JSClassifier()
+        log.VBSClassifier = VBSClassifier()
+        log.URLClassifier = URLClassifier()
         log.SampleClassifier = SampleClassifier()
-        log.TextClassifier   = TextClassifier()
+        log.TextClassifier = TextClassifier()
         log.CookieClassifier = CookieClassifier()
-        log.ImageClassifier  = ImageClassifier()
+        log.ImageClassifier = ImageClassifier()
 
         self.classifiers_map = {
-            'html'   : log.HTMLClassifier,
-            'js'     : log.JSClassifier,
-            'vbs'    : log.VBSClassifier,
-            'url'    : log.URLClassifier,
-            'sample' : log.SampleClassifier,
-            'cookie' : log.CookieClassifier,
-            'text'   : log.TextClassifier,
-            'image'  : log.ImageClassifier
+            "html": log.HTMLClassifier,
+            "js": log.JSClassifier,
+            "vbs": log.VBSClassifier,
+            "url": log.URLClassifier,
+            "sample": log.SampleClassifier,
+            "cookie": log.CookieClassifier,
+            "text": log.TextClassifier,
+            "image": log.ImageClassifier,
         }
 
     def __init_pyhooks(self):
-        log.PyHooks = dict()
+        log.PyHooks = {}
 
     def __init_trace(self):
         log.Trace = None
@@ -120,13 +130,16 @@ class ThugAPI:
     def __init_opaque_filter(self):
         self.opaque_filter = OpaqueFilter()
 
-    def __call__(self): # pragma: no cover
+    def __call__(self):  # pragma: no cover
         self.analyze()
 
     def version(self):
-        print("Thug %s (JS Engine: %s v%s)" % (thug.__version__,
-                                               thug.__jsengine__,
-                                               thug.__jsengine_version__))
+        print(
+            f"Thug "
+            f"{thug.__version__} "
+            f"(JS Engine: {thug.__jsengine__} v{thug.__jsengine_version__})"
+        )
+
         sys.exit(0)
 
     def get_useragent(self):
@@ -211,6 +224,12 @@ class ThugAPI:
     def set_no_fetch(self):
         log.ThugOpts.no_fetch = True
 
+    def enable_download_prevent(self):
+        log.ThugOpts.download_prevent = True
+
+    def disable_download_prevent(self):
+        log.ThugOpts.download_prevent = False
+
     def set_verbose(self):
         log.ThugOpts.verbose = True
         log.setLevel(logging.INFO)
@@ -276,6 +295,12 @@ class ThugAPI:
     def set_connect_timeout(self, timeout):
         log.ThugOpts.connect_timeout = timeout
 
+    def get_proxy_connect_timeout(self):
+        return log.ThugOpts.proxy_connect_timeout
+
+    def set_proxy_connect_timeout(self, timeout):
+        log.ThugOpts.proxy_connect_timeout = timeout
+
     def get_broken_url(self):
         return log.ThugOpts.broken_url
 
@@ -293,6 +318,15 @@ class ThugAPI:
 
     def set_web_tracking(self):
         log.ThugOpts.web_tracking = True
+
+    def get_async_prefetch(self):
+        return log.ThugOpts.async_prefetch
+
+    def set_async_prefetch(self):
+        log.ThugOpts.async_prefetch = True
+
+    def reset_async_prefetch(self):
+        log.ThugOpts.async_prefetch = False
 
     def disable_honeyagent(self):
         log.ThugOpts.honeyagent = False
@@ -332,7 +366,7 @@ class ThugAPI:
         fh = logging.FileHandler(output)
         log.addHandler(fh)
 
-    def set_log_quiet(self): # pragma: no cover
+    def set_log_quiet(self):  # pragma: no cover
         root = logging.getLogger()
         for handler in root.handlers:
             if isinstance(handler, logging.StreamHandler):
@@ -343,18 +377,6 @@ class ThugAPI:
         for handler in root.handlers:
             if isinstance(handler, logging.StreamHandler):
                 handler.removeFilter(self.opaque_filter)
-
-    def set_vt_query(self):
-        log.ThugOpts.vt_query = True
-
-    def set_vt_submit(self):
-        log.ThugOpts.vt_submit = True
-
-    def get_vt_runtime_apikey(self):
-        return log.ThugOpts.vt_runtime_apikey
-
-    def set_vt_runtime_apikey(self, vt_runtime_apikey):
-        log.ThugOpts.vt_runtime_apikey = vt_runtime_apikey
 
     def get_mongodb_address(self):
         return log.ThugOpts.mongodb_address
@@ -425,26 +447,38 @@ class ThugAPI:
 
     def register_pyhook(self, module, method, hook):
         if module not in log.PyHooks:
-            log.PyHooks[module] = dict()
+            log.PyHooks[module] = {}
 
         log.PyHooks[module][method] = hook
 
     def log_event(self):
         log.ThugLogging.log_event()
 
-    def watchdog_cb(self, signum, frame): # pragma: no cover
+    def watchdog_cb(self, signum, frame):  # pragma: no cover
         pass
 
+    def __reset_classifiers_matches(self):
+        for c in self.classifiers_map.values():
+            c.reset_matches()
+
     def __run(self, window):
-        if log.Trace: # pragma: no cover
+        if log.Trace:  # pragma: no cover
             sys.settrace(log.Trace)
 
         with log.JSEngine.JSLocker:
-            with Watchdog(log.ThugOpts.timeout, callback = self.watchdog_cb):
+            with Watchdog(log.ThugOpts.timeout, callback=self.watchdog_cb):
                 dft = DFT(window)
                 dft.run()
 
     def run_local(self, url):
+        from bs4.element import NavigableString
+        from bs4.element import CData
+        from bs4.element import Script
+        from lxml.html import tostring
+        from lxml.html import builder as E
+
+        self.__reset_classifiers_matches()
+
         log.last_url = None
         log.last_url_fetched = None
 
@@ -453,31 +487,36 @@ class ThugAPI:
 
         log.HTTPSession = HTTPSession()
 
-        content   = open(url, 'r', encoding = "utf-8").read()
+        with open(url, "r", encoding="utf-8") as fd:
+            content = fd.read()
+
         extension = os.path.splitext(url)
 
-        if len(extension) > 1 and extension[1].lower() in ('.js', '.jse', ):
-            if not content.lstrip().startswith('<script'):
+        if len(extension) > 1 and extension[1].lower() in (
+            ".js",
+            ".jse",
+        ):
+            if not content.lstrip().startswith("<script"):
                 html = tostring(E.HTML(E.HEAD(), E.BODY(E.SCRIPT(content))))
             else:
-                soup = bs4.BeautifulSoup(content, "html.parser")
+                soup = bs4.BeautifulSoup(content, "html5lib")
 
                 try:
                     soup.html.unwrap()
-                except AttributeError:
+                except AttributeError:  # pragma: no cover
                     pass
 
                 try:
                     soup.head.unwrap()
-                except AttributeError:
+                except AttributeError:  # pragma: no cover
                     pass
 
                 try:
                     soup.body.unwrap()
-                except AttributeError:
+                except AttributeError:  # pragma: no cover
                     pass
 
-                code = soup.script.get_text(types = (NavigableString, CData, Script))
+                code = soup.script.get_text(types=(NavigableString, CData, Script))
                 html = tostring(E.HTML(E.HEAD(), E.BODY(E.SCRIPT(code))))
         else:
             html = content
@@ -485,39 +524,43 @@ class ThugAPI:
         if log.ThugOpts.features_logging:
             log.ThugLogging.Features.add_characters_count(len(html))
 
-            whitespaces_count = len([a for a in html if isinstance(a, six.string_types) and a.isspace()])
+            whitespaces_count = len(
+                [a for a in html if isinstance(a, str) and a.isspace()]
+            )
             log.ThugLogging.Features.add_whitespaces_count(whitespaces_count)
 
-        doc    = w3c.parseString(html)
-        window = Window('about:blank', doc, personality = log.ThugOpts.useragent)
+        doc = w3c.parseString(html)
+        window = Window("about:blank", doc, personality=log.ThugOpts.useragent)
         window.open()
         self.__run(window)
 
     def run_remote(self, url):
+        self.__reset_classifiers_matches()
+
         log.last_url = None
         log.last_url_fetched = None
 
         log.ThugOpts.local = False
 
         try:
-            scheme = urlparse.urlparse(url).scheme
-        except ValueError as e: # pragma: no cover
+            scheme = urlparse(url).scheme
+        except ValueError as e:  # pragma: no cover
             log.warning("[WARNING] Analysis not performed (%s)", str(e))
             return
 
-        if not scheme or not scheme.startswith('http'):
-            url = 'http://%s' % (url, )
+        if not scheme or not scheme.startswith("http"):
+            url = f"http://{url}"
 
         log.ThugLogging.set_url(url)
 
         log.HTTPSession = HTTPSession()
 
-        doc    = w3c.parseString('')
-        window = Window(log.ThugOpts.referer, doc, personality = log.ThugOpts.useragent)
+        doc = w3c.parseString("")
+        window = Window(log.ThugOpts.referer, doc, personality=log.ThugOpts.useragent)
         window = window.open(url)
         if window:
             self.__run(window)
 
     @abstractmethod
-    def analyze(self): # pragma: no cover
+    def analyze(self):  # pragma: no cover
         pass

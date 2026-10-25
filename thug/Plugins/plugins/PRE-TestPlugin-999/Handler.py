@@ -16,13 +16,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA  02111-1307  USA
 
+from zope.interface import implementer
 
 from thug.Plugins.IPlugin import IPlugin
-from zope.interface import implementer
 
 
 @implementer(IPlugin)
-class Handler(object):
+class Handler:
     def run(self, thug, log):
         log.debug(thug)
         log.debug(log)

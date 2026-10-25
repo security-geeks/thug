@@ -6,9 +6,8 @@ from .DOMException import DOMException
 
 class CharacterData(Node):
     def __init__(self, doc, tag):
-        self.tag = tag
-        self.tag._node = self
-        Node.__init__(self, doc)
+        tag._node = self
+        Node.__init__(self, doc, tag)
 
     def getData(self):
         return self._data
@@ -23,7 +22,7 @@ class CharacterData(Node):
         return len(self.data)
 
     def substringData(self, offset, count):
-        return self.data[offset:offset + count]
+        return self.data[offset : offset + count]
 
     def appendData(self, arg):
         self.data += arg
@@ -43,8 +42,8 @@ class CharacterData(Node):
         if offset + count > length:
             self.data = self.data[:offset]
         else:
-            self.data = self.data[:offset] + self.data[offset + count:]
+            self.data = self.data[:offset] + self.data[offset + count :]
 
     def replaceData(self, offset, count, arg):
-        s = self.data[:offset] + arg + self.data[offset + count:]
+        s = self.data[:offset] + arg + self.data[offset + count :]
         self.data = s

@@ -17,6 +17,8 @@
 # MA  02111-1307  USA
 
 import os
+import operator
+import types
 import copy
 import uuid
 import random
@@ -26,15 +28,12 @@ import hashlib
 import logging
 import configparser
 
-import six
-
-from thug.Analysis.shellcode.Shellcode import Shellcode
-from thug.Analysis.virustotal.VirusTotal import VirusTotal
-from thug.Analysis.honeyagent.HoneyAgent import HoneyAgent
-from thug.Analysis.context.ContextAnalyzer import ContextAnalyzer
-from thug.Analysis.screenshot.Screenshot import Screenshot
 from thug.Analysis.awis.AWIS import AWIS
-from thug.Magic.Magic import Magic
+from thug.Analysis.context.ContextAnalyzer import ContextAnalyzer
+from thug.Analysis.favicon.Favicon import Favicon
+from thug.Analysis.honeyagent.HoneyAgent import HoneyAgent
+from thug.Analysis.screenshot.Screenshot import Screenshot
+from thug.Analysis.shellcode.Shellcode import Shellcode
 
 from .BaseLogging import BaseLogging
 from .SampleLogging import SampleLogging
@@ -51,23 +50,26 @@ class ThugLogging(BaseLogging, SampleLogging):
         BaseLogging.__init__(self)
         SampleLogging.__init__(self)
 
-        self.Shellcode       = Shellcode()
-        self.VirusTotal      = VirusTotal()
-        self.HoneyAgent      = HoneyAgent()
-        self.Features        = Features()
+        self.AWIS = AWIS()
         self.ContextAnalyzer = ContextAnalyzer()
-        self.Screenshot      = Screenshot()
-        self.AWIS            = AWIS()
-        self.baseDir         = None
-        self.windows         = dict()
-        self.shellcodes      = set()
-        self.shellcode_urls  = set()
-        self.retrieved_urls  = set()
-        self.methods_cache   = dict()
-        self.formats         = set()
-        self.meta            = dict()
-        self.frames          = dict()
-        self.url             = ""
+        self.Favicon = Favicon()
+        self.Features = Features()
+        self.HoneyAgent = HoneyAgent()
+        self.Screenshot = Screenshot()
+        self.Shellcode = Shellcode()
+        self.baseDir = None
+        self.formats = set()
+        self.frames = {}
+        self.meta = {}
+        self.meta_refresh = []
+        self.methods_cache = {}
+        self.redirections = {}
+        self.retrieved_urls = set()
+        self.shellcodes = set()
+        self.shellcode_urls = set()
+        self.ssl_certs = {}
+        self.url = ""
+        self.windows = {}
 
         self.__init_hook_symbols()
         self.__init_pyhooks()
@@ -75,32 +77,47 @@ class ThugLogging(BaseLogging, SampleLogging):
 
     @staticmethod
     def get_random_name():
-        return ''.join(random.choice(string.ascii_lowercase) for _ in range(random.randint(10, 32)))
+        return "".join(
+            random.choice(string.ascii_lowercase) for _ in range(random.randint(10, 32))
+        )
 
     def __init_hook_symbols(self):
-        for name in ('eval', 'write', ):
-            setattr(self,
-                    '{}_symbol'.format(name),
-                    (self.get_random_name(), self.get_random_name(), ))
+        for name in (
+            "eval",
+            "write",
+        ):
+            setattr(
+                self,
+                f"{name}_symbol",
+                (
+                    self.get_random_name(),
+                    self.get_random_name(),
+                ),
+            )
 
     def __init_pyhooks(self):
-        hooks = log.PyHooks.get('ThugLogging', None)
+        hooks = log.PyHooks.get("ThugLogging", None)
         if hooks is None:
             return
 
+        get_method_function = operator.attrgetter("__func__")
+        get_method_self = operator.attrgetter("__self__")
+
         for label, hook in hooks.items():
-            name   = "{}_hook".format(label)
-            _hook = six.get_method_function(hook) if six.get_method_self(hook) else hook
-            method = six.create_bound_method(_hook, ThugLogging)
+            name = f"{label}_hook"
+            _hook = get_method_function(hook) if get_method_self(hook) else hook
+            method = types.MethodType(_hook, ThugLogging)
             setattr(self, name, method)
 
     def __init_config(self):
-        conf_file = os.path.join(log.configuration_path, 'thug.conf')
-        if not os.path.exists(conf_file): # pragma: no cover
-            log.critical("Logging subsystem not initialized (configuration file not found)")
+        conf_file = os.path.join(log.configuration_path, "thug.conf")
+        if not os.path.exists(conf_file):  # pragma: no cover
+            log.critical(
+                "Logging subsystem not initialized (configuration file not found)"
+            )
             return
 
-        self.modules = dict()
+        self.modules = {}
         config = configparser.ConfigParser()
         config.read(conf_file)
 
@@ -109,11 +126,11 @@ class ThugLogging(BaseLogging, SampleLogging):
                 self.modules[name.strip()] = module()
 
         for m in self.modules.values():
-            for fmt in getattr(m, 'formats', tuple()):
-                self.formats.add(fmt) # pragma: no cover
+            for fmt in getattr(m, "formats", tuple()):
+                self.formats.add(fmt)  # pragma: no cover
 
     def resolve_method(self, name):
-        if name in self.methods_cache.keys():
+        if name in self.methods_cache:
             return self.methods_cache[name]
 
         methods = []
@@ -134,27 +151,43 @@ class ThugLogging(BaseLogging, SampleLogging):
 
         self.url = url
 
-        for m in self.resolve_method('set_url'):
+        for m in self.resolve_method("set_url"):
             m(url)
 
-        if log.ThugOpts.awis: # pragma: no cover
+        if log.ThugOpts.awis:  # pragma: no cover
             report = log.ThugLogging.AWIS.query(url)
             if not report:
                 return
 
-            for m in self.resolve_method('log_awis'):
+            for m in self.resolve_method("log_awis"):
                 m(report)
 
-    def add_behavior_warn(self, description = None, cve = None, snippet = None, method = "Dynamic Analysis"):
-        for m in self.resolve_method('add_behavior_warn'):
+    def add_behavior_warn(
+        self,
+        description=None,
+        cve=None,
+        snippet=None,
+        method="Dynamic Analysis",
+        verbose=True,
+    ):
+        for m in self.resolve_method("add_behavior_warn"):
             m(description, cve, snippet, method)
 
-        log.warning(description)
+        if verbose or log.ThugOpts.verbose or log.ThugOpts.debug:
+            log.warning(description)
 
     def check_snippet(self, s):
         return len(s) < self.eval_min_length_logging
 
-    def add_code_snippet(self, snippet, language, relationship, method = "Dynamic Analysis", check = False, force = False):
+    def add_code_snippet(
+        self,
+        snippet,
+        language,
+        relationship,
+        method="Dynamic Analysis",
+        check=False,
+        force=False,
+    ):
         if not log.ThugOpts.code_logging and not force:
             return None
 
@@ -163,7 +196,7 @@ class ThugLogging(BaseLogging, SampleLogging):
 
         tag = uuid.uuid4()
 
-        for m in self.resolve_method('add_code_snippet'):
+        for m in self.resolve_method("add_code_snippet"):
             m(snippet, language, relationship, tag.hex, method)
 
         return tag.hex
@@ -171,41 +204,43 @@ class ThugLogging(BaseLogging, SampleLogging):
     def add_shellcode_snippet(self, snippet, language, relationship, method):
         tag = uuid.uuid4()
 
-        for m in self.resolve_method('add_shellcode_snippet'):
+        for m in self.resolve_method("add_shellcode_snippet"):
             m(snippet, language, relationship, tag.hex, method)
 
         return tag.hex
 
-    def log_file(self, data, url = None, params = None, sampletype = None):
+    def log_file(self, data, url=None, params=None, sampletype=None):
+        if isinstance(data, bytearray):
+            data = bytes(data)
+
         sample = self.build_sample(data, url, sampletype)
+
         if sample is None:
             return None
 
         return self.__log_file(sample, data, url, params)
 
-    def __log_file(self, sample, data, url = None, params = None):
-        for m in self.resolve_method('log_file'):
+    def __log_file(self, sample, data, url=None, params=None):
+        for m in self.resolve_method("log_file"):
             m(copy.deepcopy(sample), url, params)
 
-        self.VirusTotal.analyze(data, sample, self.baseDir)
-
-        if sample['type'] in ('JAR', ):
+        if sample["type"] in ("JAR",):
             self.HoneyAgent.analyze(data, sample, self.baseDir, params)
 
-        log.SampleClassifier.classify(data, sample['md5'])
+        log.SampleClassifier.classify(data, sample["md5"])
         return sample
 
     def log_event(self):
-        for m in self.resolve_method('export'):
+        for m in self.resolve_method("export"):
             m(self.baseDir)
 
-        for m in self.resolve_method('log_event'): # pragma: no cover
+        for m in self.resolve_method("log_event"):  # pragma: no cover
             m(self.baseDir)
 
         if log.ThugOpts.file_logging:
             log.warning("Thug analysis logs saved at %s", self.baseDir)
 
-    def log_connection(self, source, destination, method, flags = None):
+    def log_connection(self, source, destination, method, flags=None):
         """
         Log the connection (redirection, link) between two pages
 
@@ -215,12 +250,12 @@ class ThugLogging(BaseLogging, SampleLogging):
         @flags          Additional information flags. Existing are: "exploit"
         """
         if flags is None:
-            flags = dict()
+            flags = {}
 
-        for m in self.resolve_method('log_connection'):
+        for m in self.resolve_method("log_connection"):
             m(source, destination, method, flags)
 
-    def log_location(self, url, data, flags = None):
+    def log_location(self, url, data, flags=None):
         """
         Log file information for a given url
 
@@ -230,7 +265,6 @@ class ThugLogging(BaseLogging, SampleLogging):
                         - content     Content
                         - md5         MD5 checksum
                         - sha256      SHA-256 checksum
-                        - ssdeep      Ssdeep hash
                         - fsize       Content size
                         - ctype       Content type (whatever the server says it is)
                         - mtype       Calculated MIME type
@@ -238,28 +272,30 @@ class ThugLogging(BaseLogging, SampleLogging):
         @flags  Additional information flags
         """
         if flags is None:
-            flags = dict()
+            flags = {}
 
-        for m in self.resolve_method('log_location'):
-            m(url, data, flags = flags)
+        for m in self.resolve_method("log_location"):
+            m(url, data, flags=flags)
 
-    def log_exploit_event(self, url, module, description, cve = None, data = None, forward = True):
+    def log_exploit_event(
+        self, url, module, description, cve=None, data=None, forward=True
+    ):
         """
         Log file information for a given url
 
-        @url            URL where this exploit occured
+        @url            URL where this exploit occurred
         @module         Module/ActiveX Control, ... that gets exploited
         @description    Description of the exploit
         @cve            CVE number (if available)
         @forward        Forward log to add_behavior_warn
         """
         if forward:
-            self.add_behavior_warn("[%s] %s" % (module, description, ), cve = cve)
+            self.add_behavior_warn(f"[{module}] {description}", cve=cve)
 
-        for m in self.resolve_method('log_exploit_event'):
-            m(url, module, description, cve = cve, data = data)
+        for m in self.resolve_method("log_exploit_event"):
+            m(url, module, description, cve=cve, data=data)
 
-    def log_image_ocr(self, url, result, forward = True):
+    def log_image_ocr(self, url, result, forward=True):
         """
         Log the results of images OCR-based analysis
 
@@ -270,10 +306,10 @@ class ThugLogging(BaseLogging, SampleLogging):
         if forward:
             log.warning("[OCR] Result: %s (URL: %s)", result, url)
 
-        for m in self.resolve_method('log_image_ocr'):
+        for m in self.resolve_method("log_image_ocr"):
             m(url, result)
 
-    def log_classifier(self, classifier, url, rule, tags = "", meta = None):
+    def log_classifier(self, classifier, url, rule, tags="", meta=None):
         """
         Log classifiers matching for a given url
 
@@ -283,31 +319,33 @@ class ThugLogging(BaseLogging, SampleLogging):
         @meta           Rule meta
         @tags           Rule tags
         """
-        self.add_behavior_warn("[%s Classifier] URL: %s (Rule: %s, Classification: %s)" % (classifier.upper(),
-                                                                                           url,
-                                                                                           rule,
-                                                                                           tags, ))
+        self.add_behavior_warn(
+            f"[{classifier.upper()} Classifier] URL: {url} "
+            f"(Rule: {rule}, Classification: {tags})"
+        )
 
         if meta is None:
-            meta = dict() # pragma: no cover
+            meta = {}  # pragma: no cover
 
-        for m in self.resolve_method('log_classifier'):
+        for m in self.resolve_method("log_classifier"):
             m(classifier, url, rule, tags, meta)
 
         hook = getattr(self, "log_classifier_hook", None)
         if hook:
-            hook(classifier, url, rule, tags, meta) # pylint:disable=not-callable
+            hook(classifier, url, rule, tags, meta)  # pylint:disable=not-callable
 
     def log_cookies(self):
-        for m in self.resolve_method('log_cookies'):
+        for m in self.resolve_method("log_cookies"):
             m()
 
     def log_redirect(self, response, window):
         self.log_cookies()
 
         if not response.history:
-            if 'Set-Cookie' in response.headers:
-                log.CookieClassifier.classify(response.url, response.headers['Set-Cookie'])
+            if "Set-Cookie" in response.headers:
+                log.CookieClassifier.classify(
+                    response.url, response.headers["Set-Cookie"]
+                )
 
             if response.url:
                 log.URLClassifier.classify(response.url)
@@ -317,19 +355,21 @@ class ThugLogging(BaseLogging, SampleLogging):
 
         final = response.url
 
-        while final is None: # pragma: no cover
+        while final is None:  # pragma: no cover
             for h in reversed(response.history):
                 final = h.url
 
         for h in response.history:
-            if 'Set-Cookie' in h.headers:
-                log.CookieClassifier.classify(h.url, h.headers['Set-Cookie'])
+            if "Set-Cookie" in h.headers:
+                log.CookieClassifier.classify(h.url, h.headers["Set-Cookie"])
 
-            location = h.headers.get('location', None)
+            location = h.headers.get("location", None)
 
-            self.add_behavior_warn("[HTTP Redirection (Status: %s)] Content-Location: %s --> Location: %s" % (h.status_code,
-                                                                                                              h.url,
-                                                                                                              location))
+            self.add_behavior_warn(
+                f"[HTTP Redirection (Status: {h.status_code})] "
+                f"Content-Location: {h.url} --> Location: {location}"
+            )
+
             location = log.HTTPSession.normalize_url(window, location)
             self.log_connection(h.url, location, "http-redirect")
 
@@ -337,23 +377,23 @@ class ThugLogging(BaseLogging, SampleLogging):
             log.URLClassifier.classify(h.url)
             log.HTTPSession.fetch_ssl_certificate(h.url)
 
-            ctype = h.headers.get('content-type', 'unknown')
+            ctype = h.headers.get("content-type", "unknown")
 
-            md5 = hashlib.md5() # nosec
+            md5 = hashlib.md5()  # nosec
             md5.update(h.content)
             sha256 = hashlib.sha256()
             sha256.update(h.content)
 
-            mtype = Magic(h.content).get_mime()
+            mtype = log.Magic.get_mime(h.content)
 
             data = {
-                "content" : h.content,
-                "status"  : h.status_code,
-                "md5"     : md5.hexdigest(),
-                "sha256"  : sha256.hexdigest(),
-                "fsize"   : len(h.content),
-                "ctype"   : ctype,
-                "mtype"   : mtype
+                "content": h.content,
+                "status": h.status_code,
+                "md5": md5.hexdigest(),
+                "sha256": sha256.hexdigest(),
+                "fsize": len(h.content),
+                "ctype": ctype,
+                "mtype": mtype,
             }
 
             self.log_location(h.url, data)
@@ -364,34 +404,45 @@ class ThugLogging(BaseLogging, SampleLogging):
         return final
 
     def log_href_redirect(self, referer, url):
-        if not url: # pragma: no cover
+        if not url:  # pragma: no cover
             return
 
-        self.add_behavior_warn("[HREF Redirection (document.location)] Content-Location: %s --> Location: %s" % (referer, url, ))
+        self.add_behavior_warn(
+            f"[HREF Redirection (document.location)] Content-Location: {referer} --> Location: {url}"
+        )
         self.log_connection(referer, url, "href")
 
     def log_certificate(self, url, certificate):
         if not log.ThugOpts.cert_logging:
             return
 
-        self.add_behavior_warn("[Certificate]\n %s" % (certificate, ))
+        self.add_behavior_warn(
+            f"[Certificate]{os.linesep} {certificate}", verbose=False
+        )
 
-        for m in self.resolve_method('log_certificate'): # pragma: no cover
+        for m in self.resolve_method("log_certificate"):  # pragma: no cover
             m(url, certificate)
 
-    def log_analysis_module(self, dirname, sample, report, module, fmt = "json"):
-        filename = "%s.%s" % (sample['md5'], fmt, )
+    def log_analysis_module(self, dirname, sample, report, module, fmt="json"):
+        filename = f"{sample['md5']}.{fmt}"
         self.store_content(dirname, filename, report)
 
-        method = "log_%s" % (module, )
-        for m in self.resolve_method(method): # pragma: no cover
+        method = f"log_{module}"
+        for m in self.resolve_method(method):  # pragma: no cover
             m(sample, report)
-
-    def log_virustotal(self, dirname, sample, report):
-        self.log_analysis_module(dirname, sample, report, "virustotal")
 
     def log_honeyagent(self, dirname, sample, report):
         self.log_analysis_module(dirname, sample, report, "honeyagent")
+
+    def log_favicon(self, url, favicon):
+        dhash = self.Favicon.eval_dhash(favicon)
+        if dhash is None:  # pragma: no cover
+            return
+
+        self.add_behavior_warn(f"[Favicon] URL: {url} (dhash: {dhash})")
+
+        for m in self.resolve_method("log_favicon"):
+            m(url, dhash)
 
     def log_screenshot(self, url, screenshot):
         """
@@ -400,11 +451,11 @@ class ThugLogging(BaseLogging, SampleLogging):
         @url        URL
         @screenshot Screenshot
         """
-        dirname  = os.path.join(self.baseDir, 'analysis', 'screenshots')
-        filename = "{}.jpg".format(hashlib.sha256(screenshot).hexdigest())
+        dirname = os.path.join(self.baseDir, "analysis", "screenshots")
+        filename = f"{hashlib.sha256(screenshot).hexdigest()}.png"
         self.store_content(dirname, filename, screenshot)
 
-        for m in self.resolve_method('log_screenshot'): # pragma: no cover
+        for m in self.resolve_method("log_screenshot"):  # pragma: no cover
             m(url, screenshot)
 
     @staticmethod
@@ -426,15 +477,15 @@ class ThugLogging(BaseLogging, SampleLogging):
         except OSError as e:
             if e.errno == errno.EEXIST:
                 pass
-            else: # pragma: no cover
+            else:  # pragma: no cover
                 raise
 
         fname = os.path.join(dirname, filename)
 
         try:
-            with open(fname, 'wb') as fd:
+            with open(fname, "wb") as fd:
                 fd.write(content)
-        except Exception as e: # pragma: no cover
+        except Exception as e:  # pragma: no cover,pylint:disable=broad-except
             log.warning(str(e))
 
         return fname

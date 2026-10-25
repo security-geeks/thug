@@ -1,4 +1,3 @@
-import os
 import logging
 
 import thug
@@ -10,7 +9,7 @@ configuration_path = thug.__configuration_path__
 
 log = logging.getLogger("Thug")
 log.configuration_path = configuration_path
-log.personalities_path = os.path.join(configuration_path, "personalities") if configuration_path else None
+log.personalities_path = thug.__personalities_path__ if configuration_path else None
 
 log.ThugOpts = ThugOpts()
 
@@ -31,5 +30,5 @@ class TestJSInspector(object):
         window = WindowDict()
         window.url = last_url
 
-        inspector = JSInspector(window, object(), '')
+        inspector = JSInspector(window, object(), "")
         assert inspector.dump_url == last_url

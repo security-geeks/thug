@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from .CharacterData import CharacterData
-from .DOMException import DOMException
 
 
 class Text(CharacterData):
@@ -10,7 +9,13 @@ class Text(CharacterData):
         CharacterData.__init__(self, doc, tag)
 
     def splitText(self, offset):
-        raise DOMException(DOMException.NO_MODIFICATION_ALLOWED_ERR)
+        newNode = self.doc.createTextNode(self.data[offset:])
+        self.data = self.data[:offset]
+
+        if self.parentNode:
+            self.parentNode.insertBefore(newNode, self.nextSibling)
+
+        return newNode
 
     def getNodeValue(self):
         return str(self.data)
@@ -26,5 +31,6 @@ class Text(CharacterData):
 
     @property
     def nodeType(self):
-        from .Node import Node
-        return Node.TEXT_NODE
+        from .NodeType import NodeType
+
+        return NodeType.TEXT_NODE

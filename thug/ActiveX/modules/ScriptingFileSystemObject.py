@@ -1,4 +1,3 @@
-
 import os
 import string
 import random
@@ -14,37 +13,48 @@ from thug.OS.Windows import win32_folders
 log = logging.getLogger("Thug")
 
 
-def BuildPath(self, arg0, arg1):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] BuildPath("%s", "%s")' % (arg0, arg1, ))
-    return "%s\\%s" % (arg0, arg1)
+def BuildPath(self, arg0, arg1):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] BuildPath("{arg0}", "{arg1}")'
+    )
+    return f"{arg0}\\{arg1}"
 
 
-def CopyFile(self, source, destination, overwritefiles = False):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] CopyFile("%s", "%s")' % (source, destination))
+def CopyFile(self, source, destination, overwritefiles=False):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] CopyFile("{source}", "{destination}")'
+    )
     log.TextFiles[destination] = log.TextFiles[source]
 
 
-def DeleteFile(self, filespec, force = False):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] DeleteFile("%s", %s)' % (filespec,
-                                                                                                     force))
+def DeleteFile(self, filespec, force=False):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] DeleteFile("{filespec}", {force})'
+    )
 
 
-def CreateTextFile(self, filename, overwrite = False, _unicode = False):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] CreateTextFile("%s", "%s", "%s")' % (filename,
-                                                                                                                 overwrite,
-                                                                                                                 _unicode))
+def CreateTextFile(self, filename, overwrite=False, _unicode=False):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] CreateTextFile("{filename}", '
+        f'"{overwrite}", '
+        f'"{_unicode}")'
+    )
     stream = TextStream.TextStream()
     stream._filename = filename
     return stream
 
 
-def CreateFolder(self, path):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] CreateFolder("%s")' % (path, ))
+def CreateFolder(self, path):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] CreateFolder("{path}")'
+    )
     return Folder.Folder(path)
 
 
-def FileExists(self, filespec):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] FileExists("%s")' % (filespec, ))
+def FileExists(self, filespec):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] FileExists("{filespec}")'
+    )
     if not filespec:
         return True
 
@@ -57,27 +67,35 @@ def FileExists(self, filespec):
     return False
 
 
-def FolderExists(self, folder):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] FolderExists("%s")' % (folder, ))
+def FolderExists(self, folder):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] FolderExists("{folder}")'
+    )
     return str(folder).lower() in win32_folders
 
 
-def GetExtensionName(self, path):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] GetExtensionName("%s")' % (path, ))
+def GetExtensionName(self, path):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] GetExtensionName("{path}")'
+    )
     ext = os.path.splitext(path)[1]
     return ext if ext else ""
 
 
-def GetFile(self, filespec):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] GetFile("%s")' % (filespec, ))
+def GetFile(self, filespec):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] GetFile("{filespec}")'
+    )
     return File.File(filespec)
 
 
 def GetSpecialFolder(self, arg):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] GetSpecialFolder("%s")' % (arg, ))
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] GetSpecialFolder("{arg}")'
+    )
 
     arg = int(arg)
-    folder = ''
+    folder = ""
     if arg == 0:
         folder = WScriptShell.ExpandEnvironmentStrings(self, "%windir%")
     elif arg == 1:
@@ -85,39 +103,46 @@ def GetSpecialFolder(self, arg):
     elif arg == 2:
         folder = WScriptShell.ExpandEnvironmentStrings(self, "%TEMP%")
 
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] Returning %s for GetSpecialFolder("%s")' % (folder,
-                                                                                                                        arg, ))
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] Returning {folder} for GetSpecialFolder("{arg}")'
+    )
     return folder
 
 
-def GetTempName(self):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] GetTempName()')
-    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(8))
+def GetTempName(self):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        "[Scripting.FileSystemObject ActiveX] GetTempName()"
+    )
+    return "".join(
+        random.choice(string.ascii_lowercase + string.digits) for _ in range(8)
+    )
 
 
-def MoveFile(self, source, destination):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] MoveFile("%s", "%s")' % (source,
-                                                                                                     destination))
+def MoveFile(self, source, destination):  # pylint:disable=unused-argument
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] MoveFile("{source}", "{destination}")'
+    )
     log.TextFiles[destination] = log.TextFiles[source]
     del log.TextFiles[source]
 
 
-def OpenTextFile(self, sFilePathAndName, ForWriting = True, flag = True):
-    log.ThugLogging.add_behavior_warn('[Scripting.FileSystemObject ActiveX] OpenTextFile("%s", "%s", "%s")' % (sFilePathAndName,
-                                                                                                               ForWriting,
-                                                                                                               flag))
-    log.ThugLogging.log_exploit_event(self._window.url,
-                                      "Scripting.FileSystemObject ActiveX",
-                                      "OpenTextFile",
-                                      data = {
-                                                "filename"  : sFilePathAndName,
-                                                "ForWriting": ForWriting,
-                                                "flag"      : flag
-                                             },
-                                      forward = False)
+def OpenTextFile(self, sFilePathAndName, ForWriting=True, flag=True):
+    log.ThugLogging.add_behavior_warn(
+        f'[Scripting.FileSystemObject ActiveX] OpenTextFile("{sFilePathAndName}", '
+        f'"{ForWriting}" ,'
+        f'"{flag}")'
+    )
 
-    if getattr(log, 'TextFiles', None) is None:
-        log.TextFiles = dict()
+    log.ThugLogging.log_exploit_event(
+        self._window.url,
+        "Scripting.FileSystemObject ActiveX",
+        "OpenTextFile",
+        data={"filename": sFilePathAndName, "ForWriting": ForWriting, "flag": flag},
+        forward=False,
+    )
+
+    if getattr(log, "TextFiles", None) is None:
+        log.TextFiles = {}
 
     if sFilePathAndName in log.TextFiles:
         return log.TextFiles[sFilePathAndName]
@@ -125,8 +150,10 @@ def OpenTextFile(self, sFilePathAndName, ForWriting = True, flag = True):
     stream = TextStream.TextStream()
     stream._filename = sFilePathAndName
 
-    if log.ThugOpts.local and sFilePathAndName in (log.ThugLogging.url, ): # pragma: no cover
-        with open(sFilePathAndName, 'r') as fd:
+    if log.ThugOpts.local and sFilePathAndName in (
+        log.ThugLogging.url,
+    ):  # pragma: no cover
+        with open(sFilePathAndName, encoding="utf-8", mode="r") as fd:
             data = fd.read()
 
         stream.Write(data)

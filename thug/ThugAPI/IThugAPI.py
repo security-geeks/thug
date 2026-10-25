@@ -138,6 +138,24 @@ class IThugAPI(zope.interface.Interface):
         @return: None
         """
 
+    def enable_download_prevent():
+        """
+        set_download_prevent
+
+        Enable download prevention mode
+
+        @return: None
+        """
+
+    def disable_download_prevent():
+        """
+        reset_image_processing
+
+        Disable download prevention mode
+
+        @return: None
+        """
+
     def get_file_logging():
         """
         get_file_logging
@@ -464,6 +482,26 @@ class IThugAPI(zope.interface.Interface):
         @return: None
         """
 
+    def get_proxy_connect_timeout():
+        """
+        get_proxy_connect_timeout
+
+        Get the proxy connect timeout (in seconds)
+
+        @return: the proxy connect timeout (in seconds)
+        """
+
+    def set_proxy_connect_timeout(timeout):
+        """
+        set_proxy_connect_timeout
+
+        Set the proxy connect timeout (in seconds)
+
+        @param timeout: the proxy connect timeout (in seconds)
+        @type timeout: C{int}
+        @return: None
+        """
+
     def get_timeout():
         """
         get_timeout
@@ -616,24 +654,6 @@ class IThugAPI(zope.interface.Interface):
         @return: None
         """
 
-    def set_vt_query():
-        """
-        set_vt_query
-
-        Enable VirusTotal queries for sample analysis
-
-        @return: None
-        """
-
-    def set_vt_submit():
-        """
-        set_vt_submit
-
-        Enable VirusTotal samples submit
-
-        @return: None
-        """
-
     def get_web_tracking():
         """
         get_web_tracking
@@ -648,6 +668,33 @@ class IThugAPI(zope.interface.Interface):
         set_web_tracking
 
         Enable web client tracking inspection
+
+        @return: None
+        """
+
+    def get_async_prefetch():
+        """
+        get_async_prefetch
+
+        Return True if asynchronous prefetching mode is enabled, False otherwise.
+
+        @return: bool
+        """
+
+    def set_async_prefetch():
+        """
+        set_async_prefetch
+
+        Enable asynchronous prefetching mode
+
+        @return: None
+        """
+
+    def reset_async_prefetch():
+        """
+        set_async_prefetch
+
+        Disable asynchronous prefetching mode
 
         @return: None
         """
@@ -846,7 +893,7 @@ class IThugAPI(zope.interface.Interface):
 
         and defines the custom classifier scope.
 
-        The parameter `method' is the method (not its name) to be additionaly invoked.
+        The parameter `method' is the method (not its name) to be additionally invoked.
         The method parameters depend on the `cls_type' value and are listed here for
         convenience
 

@@ -1,21 +1,23 @@
-__all__ = ['Attr',
-           'CDATASection',
-           'CharacterData',
-           'Comment',
-           'DOMException',
-           'DOMImplementation',
-           'Document',
-           'DocumentFragment',
-           'DocumentType',
-           'Element',
-           'Entity',
-           'EntityReference',
-           'NamedNodeMap',
-           'Node',
-           'NodeList',
-           'Notation',
-           'ProcessingInstruction',
-           'Text']
+__all__ = [
+    "Attr",
+    "CDATASection",
+    "CharacterData",
+    "Comment",
+    "DOMException",
+    "DOMImplementation",
+    "Document",
+    "DocumentFragment",
+    "DocumentType",
+    "Element",
+    "Entity",
+    "EntityReference",
+    "NamedNodeMap",
+    "Node",
+    "NodeList",
+    "Notation",
+    "ProcessingInstruction",
+    "Text",
+]
 
 
 from .Attr import Attr
@@ -23,7 +25,6 @@ from .CDATASection import CDATASection
 from .CharacterData import CharacterData
 from .Comment import Comment
 from .DOMException import DOMException
-from .DOMImplementation import DOMImplementation
 from .Document import Document
 from .DocumentFragment import DocumentFragment
 from .DocumentType import DocumentType

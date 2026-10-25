@@ -1,7 +1,7 @@
 Thug
 ====
 
-|version badge| |github badge| |lgtm badge| |codefactor badge| |codecov badge| |bandit badge|
+|version badge| |github badge| |codefactor badge| |codecov badge| |bandit badge|
 
 The number of client-side attacks has grown significantly in the past few years
 shifting focus on poorly protected vulnerable clients. Just as the most known
@@ -12,7 +12,7 @@ A complement to honeypots, a honeyclient is a tool designed to mimic the behavio
 of a user-driven network client application, such as a web browser, and be
 exploited by an attacker's content.
 
-Thug is a Python low-interaction honeyclient aimed at mimicing the behavior of a
+Thug is a Python low-interaction honeyclient aimed at mimicking the behavior of a
 web browser in order to detect and emulate malicious contents.
 
 
@@ -54,7 +54,7 @@ Since tox builds and installs dependencies from scratch, using `pytest`_ for fas
 License information
 -------------------
 
-Copyright (C) 2011-2021 Angelo Dell'Aera <angelo.dellaera@honeynet.org>
+Copyright (C) 2011-2026 Angelo Dell'Aera <angelo.dellaera@honeynet.org>
 
 License: GNU General Public License, version 2
 
@@ -63,16 +63,14 @@ License: GNU General Public License, version 2
    :target: https://pypi.python.org/pypi/thug/
 .. |github badge| image:: https://github.com/buffer/thug/workflows/Build/badge.svg
    :target: https://github.com/buffer/thug
-.. |lgtm badge| image:: https://img.shields.io/lgtm/grade/python/g/buffer/thug.svg?logo=lgtm&logoWidth=18
-   :target: https://lgtm.com/projects/g/buffer/thug
 .. |codefactor badge| image:: https://www.codefactor.io/repository/github/buffer/thug/badge
    :target: https://www.codefactor.io/repository/github/buffer/thug
 .. |codecov badge| image:: https://codecov.io/gh/buffer/thug/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/buffer/thug
 .. |bandit badge| image:: https://img.shields.io/badge/security-bandit-yellow.svg
    :target: https://github.com/PyCQA/bandit
-.. |docs badge| image:: https://readthedocs.org/projects/thug-honeyclient/badge/?version=latest
-   :target: http://thug-honeyclient.readthedocs.io/en/latest/?badge=latest
+.. |docs badge| image:: https://readthedocs.com/projects/thug-honeyclient-thug/badge/?version=latest
+   :target: https://thug-honeyclient-thug.readthedocs-hosted.com/en/latest/?badge=latest
 .. |donate badge| image:: https://img.shields.io/badge/Donate-PayPal-green.svg
    :target: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=XTDF8AHJ28CXY
 .. _virtualenv: https://virtualenv.pypa.io/

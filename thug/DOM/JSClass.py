@@ -1,22 +1,23 @@
+import os
 import collections.abc
 
 
 class JSClass:
-    __properties__  = {}
-    __methods__     = {}
+    __properties__ = {}
+    __methods__ = {}
     __watchpoints__ = {}
 
     def __str__(self):
         return self.toString()
 
     def __getattr__(self, name):
-        if name == 'constructor':
+        if name == "constructor":
             return JSClassConstructor(self.__class__)
 
-        if name == 'prototype':
+        if name == "prototype":
             return JSClassPrototype(self.__class__)
 
-        prop = self.__dict__.setdefault('__properties__', {}).get(name, None)
+        prop = self.__dict__.setdefault("__properties__", {}).get(name, None)
 
         if prop and isinstance(prop[0], collections.abc.Callable):
             return prop[0]()
@@ -28,7 +29,7 @@ class JSClass:
         raise AttributeError(name)
 
     def __setattr__(self, name, value):
-        prop = self.__dict__.setdefault('__properties__', {}).get(name, None)
+        prop = self.__dict__.setdefault("__properties__", {}).get(name, None)
 
         if prop and isinstance(prop[1], collections.abc.Callable):
             return prop[1](value)
@@ -37,7 +38,7 @@ class JSClass:
 
     def toString(self):
         """Returns a string representation of an object"""
-        return "[object %s]" % self.__class__.__name__
+        return f"[object {self.__class__.__name__}]"
 
     def toLocaleString(self):
         """Returns a value as a string value appropriate to the host environment's current locale"""
@@ -89,7 +90,7 @@ class JSClassConstructor(JSClass):
         return self.cls.__name__
 
     def toString(self):
-        return "function %s() {\n  [native code]\n}" % self.name
+        return f"function {self.name}() {{{os.linesep}  [native code]{os.linesep}}}"
 
     def __call__(self, *args, **kwds):
         return self.cls(*args, **kwds)

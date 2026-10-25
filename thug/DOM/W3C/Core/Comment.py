@@ -14,8 +14,9 @@ class Comment(CharacterData):
 
     @property
     def nodeType(self):
-        from .Node import Node
-        return Node.COMMENT_NODE
+        from .NodeType import NodeType
+
+        return NodeType.COMMENT_NODE
 
     def getNodeValue(self):
         return str(self.data)

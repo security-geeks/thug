@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 import logging
-import six.moves.urllib.parse as urlparse
-import six
+
+from urllib.parse import urlparse
+
 import bs4
 
 from lxml.html import builder as E
@@ -22,20 +23,20 @@ class HTMLDocument(Document):
     def __str__(self):
         return "[object HTMLDocument]"
 
-    def __init__(self, doc, win = None, referer = None, lastModified = None, cookie = ''):
-        Document.__init__(self, doc)
+    def __init__(self, doc, win=None, referer=None, lastModified=None, cookie=""):
+        Document.__init__(self, doc, self)
 
-        self._win           = win
-        self._body          = HTMLBodyElement(self.doc, self.doc.find('body'))
-        self._referer       = referer
-        self._lastModified  = lastModified
-        self._cookie        = cookie
-        self._html          = None
-        self._head          = None
+        self._win = win
+        self.body = HTMLBodyElement(self.doc, self.doc.find("body"))
+        self._referer = referer
+        self._lastModified = lastModified
+        self._cookie = cookie
+        self._html = None
+        self._head = None
         self._currentScript = None
-        self._readyState    = "loading"
-        self._domain        = urlparse.urlparse(self._win.url).hostname if self._win else ''
-        self.current        = None
+        self._readyState = "loading"
+        self._domain = urlparse(self._win.url).hostname if self._win else ""
+        self.current = None
 
         self.__init_htmldocument_personality()
 
@@ -57,7 +58,9 @@ class HTMLDocument(Document):
             return
 
     def __init_htmldocument_personality_IE(self):
-        from .HTMLDocumentCompatibleInfoCollection import HTMLDocumentCompatibleInfoCollection
+        from .HTMLDocumentCompatibleInfoCollection import (
+            HTMLDocumentCompatibleInfoCollection,
+        )
 
         if log.ThugOpts.Personality.browserMajorVersion < 8:
             self._compatible = None
@@ -65,7 +68,9 @@ class HTMLDocument(Document):
             self._compatible = HTMLDocumentCompatibleInfoCollection(self.doc, [])
 
         if log.ThugOpts.Personality.browserMajorVersion > 7:
-            self.implementation.createHTMLDocument = self.implementation._createHTMLDocument
+            self.implementation.createHTMLDocument = (
+                self.implementation._createHTMLDocument
+            )
 
         if log.ThugOpts.Personality.browserMajorVersion < 11:
             self.all = self._all
@@ -92,10 +97,10 @@ class HTMLDocument(Document):
         self.implementation.createHTMLDocument = self.implementation._createHTMLDocument
 
     def __getattr__(self, attr):
-        if attr in ('_listeners', ):
-            return self.tag._listeners # pragma: no cover
+        if attr in ("_listeners",):
+            return self.tag._listeners  # pragma: no cover
 
-        if attr in ('getBoxObjectFor', ) and not log.ThugOpts.Personality.isFirefox():
+        if attr in ("getBoxObjectFor",) and not log.ThugOpts.Personality.isFirefox():
             raise AttributeError
 
         if self._win and getattr(self._win, "doc", None):
@@ -111,11 +116,9 @@ class HTMLDocument(Document):
 
         _attr = self.getElementsByName(attr)
         if _attr:
-            from thug.DOM.W3C.Core.DOMImplementation import DOMImplementation
-
-            tag = getattr(_attr[0], 'tag', None)
+            tag = getattr(_attr[0], "tag", None)
             if tag:
-                return DOMImplementation.createHTMLElement(self.doc, tag)
+                return log.DOMImplementation.createHTMLElement(self.doc, tag)
 
         log.info("[HTMLDocument] Undefined: %s", attr)
         raise AttributeError
@@ -129,16 +132,8 @@ class HTMLDocument(Document):
     window = property(getWindow, setWindow)
 
     @property
-    def body(self):
-        return self._body
-
-    @property
-    def tag(self):
-        return self
-
-    @property
     def _node(self):
-        return self # pragma: no cover
+        return self  # pragma: no cover
 
     @property
     def visibilityState(self):
@@ -154,12 +149,12 @@ class HTMLDocument(Document):
 
     @property
     def referrer(self):
-        last_url = getattr(log, 'last_url', None)
+        last_url = getattr(log, "last_url", None)
         if last_url:
             return last_url
 
         if self._referer:
-            return str(self._referer) # pragma: no cover
+            return str(self._referer)  # pragma: no cover
 
         return ""
 
@@ -167,58 +162,68 @@ class HTMLDocument(Document):
     def anchors(self):
         from .HTMLCollection import HTMLCollection
 
-        nodes = [f for f in self.doc.find_all('a') if 'name' in f.attrs and f.attrs['name']]
+        nodes = [
+            f for f in self.doc.find_all("a") if "name" in f.attrs and f.attrs["name"]
+        ]
         return HTMLCollection(self.doc, nodes)
 
     @property
     def applets(self):
         from .HTMLCollection import HTMLCollection
 
-        applets = list(self.doc.find_all('applet'))
-        objects = [f for f in self.doc.find_all('object') if 'type' in f.attrs and 'applet' in f.attrs['type']]
+        applets = list(self.doc.find_all("applet"))
+        objects = [
+            f
+            for f in self.doc.find_all("object")
+            if "type" in f.attrs and "applet" in f.attrs["type"]
+        ]
         return HTMLCollection(self.doc, applets + objects)
 
     @property
     def forms(self):
         from .HTMLCollection import HTMLCollection
 
-        nodes = list(self.doc.find_all('form'))
+        nodes = list(self.doc.find_all("form"))
         return HTMLCollection(self.doc, nodes)
 
     @property
     def images(self):
         from .HTMLCollection import HTMLCollection
 
-        nodes = list(self.doc.find_all('img'))
+        nodes = list(self.doc.find_all("img"))
         return HTMLCollection(self.doc, nodes)
 
     @property
     def links(self):
         from .HTMLCollection import HTMLCollection
 
-        nodes = [f for f in self.doc.find_all(['a', 'area']) if 'href' in f.attrs and f.attrs['href']]
+        nodes = [
+            f
+            for f in self.doc.find_all(["a", "area"])
+            if "href" in f.attrs and f.attrs["href"]
+        ]
         return HTMLCollection(self.doc, nodes)
 
     @property
     def styleSheets(self):
         from .HTMLCollection import HTMLCollection
 
-        nodes = list(self.doc.find_all('style'))
+        nodes = list(self.doc.find_all("style"))
         return HTMLCollection(self.doc, nodes)
 
     def getTitle(self):
-        title = self.head.tag.find('title')
+        title = self.head.tag.find("title")
         return str(title.string) if title else ""
 
     def setTitle(self, value):
-        title = self.head.tag.find('title')
+        title = self.head.tag.find("title")
 
         if title:
             title.string = value
             return
 
         title = E.TITLE(value)
-        tag   = bs4.BeautifulSoup(tostring(title), "html.parser")
+        tag = bs4.BeautifulSoup(tostring(title), "html.parser")
         self.head.tag.append(tag)
 
     title = property(getTitle, setTitle)
@@ -231,12 +236,12 @@ class HTMLDocument(Document):
         if not log.HTTPSession or not log.HTTPSession.cookies:
             return self._cookie
 
-        items = ["{}={}".format(n, v) for n, v in log.HTTPSession.cookies.items()]
+        items = [f"{n}={v}" for n, v in log.HTTPSession.cookies.items()]
         return "; ".join(items)
 
     def setCookie(self, value):
-        item = value.split()[0]
-        k, v = item.split('=')
+        item = value.split(";")[0].strip()
+        k, v = item.split("=")
         log.HTTPSession.set_cookies(k, v)
 
     cookie = property(getCookie, setCookie)
@@ -251,13 +256,13 @@ class HTMLDocument(Document):
 
     @property
     def URL(self):
-        return self._win.url if self._win else ''
+        return self._win.url if self._win else ""
 
     @property
     def documentElement(self):
         from .HTMLHtmlElement import HTMLHtmlElement
 
-        html = self.doc.find('html')
+        html = self.doc.find("html")
         return HTMLHtmlElement(self, html if html else self.doc)
 
     @property
@@ -268,44 +273,55 @@ class HTMLDocument(Document):
     def compatMode(self):
         return "CSS1Compat"
 
-    @property
-    def head(self):
+    def getHead(self):
         from .HTMLHeadElement import HTMLHeadElement
 
         if self._head:
             return self._head
 
-        tag = self.doc.find('head')
+        tag = self.doc.find("head")
         if not tag:
             head = E.HEAD()
-            tag  = bs4.BeautifulSoup(tostring(head), "html.parser")
+            tag = bs4.BeautifulSoup(tostring(head), "html.parser")
 
         self._head = HTMLHeadElement(self.doc, tag)
         return self._head
+
+    def setHead(self, head):
+        pass
+
+    head = property(getHead, setHead)
 
     def getCompatible(self):
         return self._compatible
 
     def setCompatible(self, compatible):
         from .HTMLDocumentCompatibleInfo import HTMLDocumentCompatibleInfo
-        from .HTMLDocumentCompatibleInfoCollection import HTMLDocumentCompatibleInfoCollection
+        from .HTMLDocumentCompatibleInfoCollection import (
+            HTMLDocumentCompatibleInfoCollection,
+        )
 
-        _compatibles = list()
+        _compatibles = []
 
-        if log.ThugOpts.Personality.isIE() and log.ThugOpts.Personality.browserMajorVersion >= 8:
-            for s in compatible.split(';'):
+        if (
+            log.ThugOpts.Personality.isIE()
+            and log.ThugOpts.Personality.browserMajorVersion >= 8
+        ):
+            for s in compatible.split(";"):
                 try:
-                    (useragent, version) = s.split('=')
-                except ValueError: # pragma: no cover
+                    (useragent, version) = s.split("=")
+                except ValueError:  # pragma: no cover
                     # Ignore the http-equiv X-UA-Compatible content if its
                     # format is not correct
                     return
 
-                for v in version.split(','):
+                for v in version.split(","):
                     p = HTMLDocumentCompatibleInfo(useragent, v)
                     _compatibles.append(p)
 
-            self._compatible = HTMLDocumentCompatibleInfoCollection(self.doc, _compatibles)
+            self._compatible = HTMLDocumentCompatibleInfoCollection(
+                self.doc, _compatibles
+            )
 
     compatible = property(getCompatible, setCompatible)
 
@@ -314,7 +330,7 @@ class HTMLDocument(Document):
         major = log.ThugOpts.Personality.browserMajorVersion
 
         if major < 8:
-            return 7 if self.compatMode in ("CSS1Compat", ) else 5
+            return 7 if self.compatMode in ("CSS1Compat",) else 5
 
         self.window.doc.DFT.force_handle_meta_x_ua_compatible()
 
@@ -322,25 +338,25 @@ class HTMLDocument(Document):
 
         for index in range(self.compatible.length):
             item = self.compatible.item(index)
-            if not item.userAgent.lower() in ("ie", ):
+            if item.userAgent.lower() not in ("ie",):
                 continue
 
             _version = item.version.lower()
-            if _version in ('edge', ):
+            if _version in ("edge",):
                 engine = major
                 break
 
             mode_version = _version
 
-            if _version.startswith('emulateie'):
+            if _version.startswith("emulateie"):
                 mode_version = _version.split("emulateie")[1]
 
             try:
                 mode_version = int(mode_version)
-            except ValueError: # pragma: no cover
+            except ValueError:  # pragma: no cover
                 continue
 
-            if mode_version not in (5, 7, 8, 9, 10): # pragma: no cover
+            if mode_version not in (5, 7, 8, 9, 10):  # pragma: no cover
                 continue
 
             if engine <= mode_version <= major:
@@ -351,7 +367,7 @@ class HTMLDocument(Document):
 
         return engine
 
-    def open(self, mimetype = 'text/html', historyPosition = "replace"):
+    def open(self, mimetype="text/html", historyPosition="replace"):  # pylint:disable=unused-argument
         self.doc = bs4.BeautifulSoup("", "html5lib")
         return self
 
@@ -368,13 +384,15 @@ class HTMLDocument(Document):
         if log.ThugOpts.features_logging:
             log.ThugLogging.Features.increase_document_write_count()
 
-        if isinstance(html, six.integer_types):
+        if isinstance(html, int):
             html = str(html)
 
-        log.HTMLClassifier.classify(log.ThugLogging.url if log.ThugOpts.local else self.URL, html)
+        log.HTMLClassifier.classify(
+            log.ThugLogging.url if log.ThugOpts.local else self.URL, html
+        )
 
         if self._html is None:
-            self._html = list()
+            self._html = []
 
         self._html.append(html)
 
@@ -382,17 +400,19 @@ class HTMLDocument(Document):
             log.warning("[WARNING] document.write loop detected")
             return
 
-        tag  = self.current
-        body = self.doc.find('body')
+        tag = self.current
+        body = self.doc.find("body")
 
-        if tag.parent is None:
-            parent = body # pragma: no cover
+        if tag is None or tag.parent is None:
+            parent = body  # pragma: no cover
         else:
-            parent = body if body and tag.parent.name in ('html', ) else tag.parent
+            parent = body if body and tag.parent.name in ("html",) else tag.parent
+
+        html_write = False
 
         soup = log.HTMLInspector.run(html, "html.parser")
 
-        for tag in soup.contents:
+        for tag in list(soup.contents):
             if isinstance(tag, bs4.NavigableString):
                 if not tag.string.rstrip():
                     continue
@@ -408,34 +428,42 @@ class HTMLDocument(Document):
                 parent.append(tag)
 
             name = getattr(tag, "name", None)
-            if name in (None, ):
+            if name in (None,):
                 continue
 
+            if name in ("html",):
+                html_write = True
+
             try:
-                handler = getattr(self._win.doc.DFT, "handle_%s" % (name, ), None)
-            except Exception: # pragma: no cover
-                handler = getattr(log.DFT, "handle_%s" % (name, ), None)
+                handler = getattr(self._win.doc.DFT, f"handle_{name}", None)
+            except Exception:  # pragma: no cover,pylint:disable=broad-except
+                handler = getattr(log.DFT, f"handle_{name}", None)
 
             if handler:
                 handler(tag)
 
-        log.HTMLClassifier.classify(log.ThugLogging.url if log.ThugOpts.local else self.URL, str(self.tag))
+        log.HTMLClassifier.classify(
+            log.ThugLogging.url if log.ThugOpts.local else self.URL, str(self.tag)
+        )
 
         _html = "".join(self._html)
-        if html == _html:
+        if not html_write and html == _html:
             return
 
         soup = log.HTMLInspector.run(html, "html.parser")
 
-        for tag in soup.contents:
+        for tag in list(soup.contents):
             name = getattr(tag, "name", None)
-            if name in ("script", None, ):
+            if name in (
+                "script",
+                None,
+            ):
                 continue
 
             try:
-                handler = getattr(self._win.doc.DFT, "handle_%s" % (name, ), None)
-            except Exception: # pragma: no cover
-                handler = getattr(log.DFT, "handle_%s" % (name, ), None)
+                handler = getattr(self._win.doc.DFT, f"handle_{name}", None)
+            except Exception:  # pragma: no cover,pylint:disable=broad-except
+                handler = getattr(log.DFT, f"handle_{name}", None)
 
             if handler:
                 handler(tag)
@@ -446,35 +474,37 @@ class HTMLDocument(Document):
     def getElementsByName(self, elementName):
         from .HTMLCollection import HTMLCollection
 
-        tags = self.doc.find_all(attrs = {'name': elementName})
+        tags = self.doc.find_all(attrs={"name": elementName})
         return HTMLCollection(self.doc, tags)
 
     @property
     def _all(self):
         from .HTMLAllCollection import HTMLAllCollection
 
-        s = list(self.doc.find_all(text = False))
+        s = list(self.doc.find_all())
         return HTMLAllCollection(self.doc, s)
 
     @property
     def scripts(self):
         from .HTMLAllCollection import HTMLAllCollection
 
-        s = list(self.current.find_all_previous('script'))
+        s = list(self.current.find_all_previous("script"))
         s.append(self.current)
 
         return HTMLAllCollection(self.doc, s)
 
     @property
     def currentScript(self):
-        from thug.DOM.W3C.Core.DOMImplementation import DOMImplementation
-
         if self._currentScript:
-            return self._currentScript # pragma: no cover
+            return self._currentScript  # pragma: no cover
 
-        return DOMImplementation.createHTMLElement(self.doc, self.current) if self.current else None
+        return (
+            log.DOMImplementation.createHTMLElement(self.doc, self.current)
+            if self.current
+            else None
+        )
 
-    def _createStyleSheet(self, URL = None, index = None):
+    def _createStyleSheet(self, URL=None, index=None):
         # Creates a styleSheet object and inserts it into the current document.
         # The createStyleSheet method is only supported by Internet Explorer.
         # In other browsers, use the createElement method to create a new link
@@ -495,10 +525,10 @@ class HTMLDocument(Document):
         # style element is inserted after the other link and style elements in
         # source order.
 
-        _type = 'style' if not URL else 'link'
+        _type = "style" if not URL else "link"
 
         obj = self.createElement(_type)
-        if _type in ('link', ):
+        if _type in ("link",):
             obj.href = URL
             obj.rel = "stylesheet"
 
@@ -510,12 +540,12 @@ class HTMLDocument(Document):
             head.appendChild(obj)
             return obj
 
-        length  = len(head.childNodes)
+        length = len(head.childNodes)
         matches = 0
-        pos     = 0
+        pos = 0
 
         while pos < length:
-            if head.childNodes[pos].tagName.lower() in (_type, ):
+            if head.childNodes[pos].tagName.lower() in (_type,):
                 matches += 1
 
             if matches > index:

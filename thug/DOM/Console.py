@@ -26,7 +26,7 @@ log = logging.getLogger("Thug")
 class Console(JSClass):
     def __init__(self):
         self._counter = 0
-        self._label_counter = dict()
+        self._label_counter = {}
         self.__init_console_personality()
 
     def __init_console_personality(self):
@@ -47,86 +47,86 @@ class Console(JSClass):
             return
 
     def __init_console_personality_IE(self):
-        self.__methods__['assert'] = self._assert
+        self.__methods__["assert"] = self._assert
 
         self.clear = self._clear
         self.count = self._count
 
         if log.ThugOpts.Personality.browserMajorVersion > 7:
             self.info = self._info
-            self.log  = self._log
+            self.log = self._log
             self.warn = self._warn
 
-            self.__methods__['error'] = self._error
+            self.__methods__["error"] = self._error
 
         if log.ThugOpts.Personality.browserMajorVersion > 10:
-            self.group          = self._group
+            self.group = self._group
             self.groupCollapsed = self._groupCollapsed
-            self.groupEnd       = self._groupEnd
-            self.time           = self._time
-            self.timeEnd        = self._timeEnd
-            self.trace          = self._trace
+            self.groupEnd = self._groupEnd
+            self.time = self._time
+            self.timeEnd = self._timeEnd
+            self.trace = self._trace
 
     def __init_console_personality_Firefox(self):
         if log.ThugOpts.Personality.browserMajorVersion > 3:
-            self.group          = self._group
+            self.group = self._group
             self.groupCollapsed = self._groupCollapsed
-            self.groupEnd       = self._groupEnd
-            self.info           = self._info
-            self.log            = self._log
-            self.warn           = self._warn
+            self.groupEnd = self._groupEnd
+            self.info = self._info
+            self.log = self._log
+            self.warn = self._warn
 
-            self.__methods__['error'] = self._error
+            self.__methods__["error"] = self._error
 
         if log.ThugOpts.Personality.browserMajorVersion > 9:
-            self.time    = self._time
+            self.time = self._time
             self.timeEnd = self._timeEnd
-            self.trace   = self._trace
+            self.trace = self._trace
 
         if log.ThugOpts.Personality.browserMajorVersion > 27:
-            self.__methods__['assert'] = self._assert
+            self.__methods__["assert"] = self._assert
 
         if log.ThugOpts.Personality.browserMajorVersion > 29:
             self.count = self._count
 
-        if log.ThugOpts.Personality.browserMajorVersion > 47: # pragma: no cover
+        if log.ThugOpts.Personality.browserMajorVersion > 47:  # pragma: no cover
             self.clear = self._clear
 
     def __init_console_personality_Chrome(self):
-        self.clear          = self._clear
-        self.count          = self._count
-        self.group          = self._group
+        self.clear = self._clear
+        self.count = self._count
+        self.group = self._group
         self.groupCollapsed = self._groupCollapsed
-        self.groupEnd       = self._groupEnd
-        self.info           = self._info
-        self.log            = self._log
-        self.warn           = self._warn
-        self.time           = self._time
-        self.timeEnd        = self._timeEnd
-        self.trace          = self._trace
+        self.groupEnd = self._groupEnd
+        self.info = self._info
+        self.log = self._log
+        self.warn = self._warn
+        self.time = self._time
+        self.timeEnd = self._timeEnd
+        self.trace = self._trace
 
-        self.__methods__['assert'] = self._assert
-        self.__methods__['error']  = self._error
+        self.__methods__["assert"] = self._assert
+        self.__methods__["error"] = self._error
 
     def __init_console_personality_Safari(self):
         self.clear = self._clear
         self.count = self._count
-        self.info  = self._info
-        self.log   = self._log
-        self.warn  = self._warn
+        self.info = self._info
+        self.log = self._log
+        self.warn = self._warn
 
-        self.__methods__['assert'] = self._assert
-        self.__methods__['error']  = self._error
+        self.__methods__["assert"] = self._assert
+        self.__methods__["error"] = self._error
 
         if log.ThugOpts.Personality.browserMajorVersion > 3:
-            self.time    = self._time
+            self.time = self._time
             self.timeEnd = self._timeEnd
-            self.trace   = self._trace
+            self.trace = self._trace
 
         if log.ThugOpts.Personality.browserMajorVersion > 4:
-            self.group          = self._group
+            self.group = self._group
             self.groupCollapsed = self._groupCollapsed
-            self.groupEnd       = self._groupEnd
+            self.groupEnd = self._groupEnd
 
     def _assert(self, expression, statement):
         log.warning("[Console] assert(%s, '%s')", expression is False, statement)
@@ -134,7 +134,7 @@ class Console(JSClass):
     def _clear(self):
         log.warning("[Console] clear()")
 
-    def _count(self, label = None):
+    def _count(self, label=None):
         if not label:
             self._counter += 1
             log.warning("[Console] count() = %s", self._counter)
@@ -149,8 +149,9 @@ class Console(JSClass):
     def debug(self, *args):
         pass
 
-    def _error(self, message):
-        log.warning("[Console] error('%s')", message)
+    def _error(self, *args):
+        for message in args:
+            log.warning("[Console] error('%s')", message)
 
     def _group(self):
         log.warning("[Console] group()")
@@ -161,20 +162,23 @@ class Console(JSClass):
     def _groupEnd(self):
         log.warning("[Console] groupEnd()")
 
-    def _info(self, message):
-        log.warning("[Console] info('%s')", message)
+    def _info(self, *args):
+        for message in args:
+            log.warning("[Console] info('%s')", message)
 
-    def _log(self, message):
-        log.warning("[Console] log('%s')", message)
+    def _log(self, *args):
+        for message in args:
+            log.warning("[Console] log('%s')", message)
 
-    def _time(self, label = None):
+    def _time(self, label=None):
         pass
 
-    def _timeEnd(self, label = None):
+    def _timeEnd(self, label=None):
         pass
 
-    def _trace(self, label = None):
+    def _trace(self, label=None):
         pass
 
-    def _warn(self, message):
-        log.warning("[Console] warn('%s')", message)
+    def _warn(self, *args):
+        for message in args:
+            log.warning("[Console] warn('%s')", message)
